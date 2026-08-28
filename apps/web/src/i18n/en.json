@@ -1,0 +1,297 @@
+{
+  "metaTitle": "Field Notes | Editorial Blog",
+  "brand": {
+    "name": "Field Notes",
+    "aria": "Field Notes homepage"
+  },
+  "nav": {
+    "home": "Home",
+    "studio": "Studio",
+    "settings": "Settings",
+    "allPosts": "All Posts",
+    "login": "Login",
+    "logout": "Logout"
+  },
+  "theme": {
+    "switchToDark": "Switch to dark mode",
+    "switchToLight": "Switch to light mode"
+  },
+  "language": {
+    "label": "Language",
+    "ro": "Romanian",
+    "en": "English"
+  },
+  "home": {
+    "categoryLabel": "Post categories",
+    "kicker": "Independent publishing, calmly done",
+    "headline": [
+      "Ideas for",
+      "people who",
+      "write online."
+    ],
+    "intro": "A public reading room with practical essays about design, product thinking, publishing workflows, and the craft behind thoughtful blogs.",
+    "leadAction": "Start with the lead story",
+    "browseAction": "Browse all posts",
+    "latest": "Latest",
+    "allPosts": "All Posts",
+    "searchPlaceholder": "Search the archive",
+    "noResults": "No posts matched this filter.",
+    "offlineFallback": "The API is not responding right now, so the local fallback content is displayed.",
+    "newsletterTitle": "Sunday Notes",
+    "newsletterBody": "A short weekly digest with the best posts, useful links, and one question worth carrying into the week.",
+    "emailPlaceholder": "you@example.com",
+    "subscribe": "Subscribe",
+    "popular": "Popular",
+    "categories": {
+      "all": "All",
+      "design": "Design",
+      "publishing": "Publishing",
+      "essays": "Essays",
+      "product": "Product"
+    }
+  },
+  "postPage": {
+    "back": "Back to all posts",
+    "by": "by",
+    "share": "Link copied",
+    "copyLink": "Copy link",
+    "saved": "Save for later",
+    "authorTitle": "Author",
+    "authorBio": "Writes about editorial interfaces, publishing rhythms, and product decisions that help ideas breathe.",
+    "articleLabel": "Article",
+    "continueReading": "Continue with",
+    "relatedTitle": "Read next",
+    "loading": "Loading post...",
+    "notFoundTitle": "Post not found",
+    "notFoundBody": "This link points to a post that is no longer in the archive.",
+    "sections": {
+      "design": [
+        {
+          "title": "Rhythm starts with the surface",
+          "body": "A good blog does not feel like a loaded page. It feels like a place where the reader can move into the text quickly. Space, clear hierarchy, and calm imagery reduce noise before the first paragraph asks for attention."
+        },
+        {
+          "title": "Small details keep readers close",
+          "body": "Labels, read time, and hover states are not decoration. They signal what kind of piece comes next, how much energy it asks for, and where the reader can go after finishing."
+        },
+        {
+          "title": "Editorial design needs to hold up",
+          "body": "A content interface needs simple rules that still work with long titles, missing images, or translated text. When the system survives those cases, the site feels crafted instead of improvised."
+        }
+      ],
+      "publishing": [
+        {
+          "title": "A good homepage has an opinion",
+          "body": "Publishing is not putting everything on the screen. It is choosing what opens the conversation, what deserves emphasis, and what can stay in the archive until the reader is looking for exactly that thing."
+        },
+        {
+          "title": "Cadence matters more than volume",
+          "body": "A blog that feels alive has recurring landmarks: predictable categories, series, a newsletter, recognizable authors. Those landmarks create trust even when posts arrive at different intervals."
+        },
+        {
+          "title": "The archive should invite, not exhaust",
+          "body": "Filters, search, and popular lists turn a pile of articles into a navigable space. Readers do not feel like they are digging for value; they feel the site showing them possible paths."
+        }
+      ],
+      "essays": [
+        {
+          "title": "The archive is the blog's memory",
+          "body": "Good essays live longer when they sit inside a structure that lets them be found. A personal archive should preserve relationships between ideas, not just a cold chronology."
+        },
+        {
+          "title": "Recency is not the only signal",
+          "body": "An older article can be the best answer for a new reader. That is why a homepage needs areas that combine freshness with editorial recommendation."
+        },
+        {
+          "title": "Tone builds the relationship",
+          "body": "A memorable blog does not win through volume alone. It wins through voice. Titles, descriptions, and groupings should sound like an attentive person, not an inventory."
+        }
+      ],
+      "product": [
+        {
+          "title": "Good friction protects the work",
+          "body": "In a publishing tool, not every extra step is a problem. Some confirmations, previews, and limits help authors avoid mistakes that would cost time or trust."
+        },
+        {
+          "title": "Authors need clear signals",
+          "body": "Post status, editing progress, and change history should be easy to scan. When data sits close to action, decisions become faster."
+        },
+        {
+          "title": "The product should disappear at the right moment",
+          "body": "A good dashboard supports writing without moving to the foreground. It offers control when needed and quiet when the author needs to stay inside the text."
+        }
+      ]
+    },
+    "pullQuotes": {
+      "design": "A blog feels premium when every detail reduces the reader's effort to begin.",
+      "publishing": "Good editorial work does not list everything. It chooses paths and dares to say where to begin.",
+      "essays": "A living archive is not storage. It is a map of ideas that still have something to say.",
+      "product": "The right friction does not slow the author down; it helps them publish with more confidence."
+    }
+  },
+  "postForm": {
+    "title": "Title",
+    "slug": "Slug",
+    "excerpt": "Excerpt",
+    "content": "Content",
+    "category": "Category",
+    "status": "Status",
+    "readTime": "Read time",
+    "image": "Cover image",
+    "metaTitleSection": "Meta and SEO",
+    "metaTitle": "Meta title",
+    "metaDescription": "Meta description",
+    "keywords": "Keywords",
+    "languageTab": "Translation",
+    "translationHint": "Complete every active language before submitting.",
+    "noActiveLanguages": "No active languages are configured.",
+    "workflowHelp": "The post is saved as a draft and can only be published by an admin.",
+    "archiveHelp": "After publication, you can archive the post when it is no longer active.",
+    "optionalReadTime": "Choose the estimated reading time",
+    "create": "Create post",
+    "creating": "Creating...",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "preview": "Preview",
+    "editDetails": "Details",
+    "editContent": "Text",
+    "wordCount": "words",
+    "statusOptions": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "placeholders": {
+      "title": "Post title",
+      "slug": "post-title",
+      "excerpt": "A short description for cards and meta.",
+      "content": "Write the post here...",
+      "readTime": "6 min",
+      "image": "https://example.com/image.jpg",
+      "metaTitle": "Title for search engines",
+      "metaDescription": "Description shown in search results.",
+      "keywords": "blog, editorial, article"
+    }
+  },
+  "auth": {
+    "titleLogin": "Login",
+    "titleRegister": "Register",
+    "eyebrow": "Editorial access",
+    "intro": "Enter the studio to create drafts, publish articles, and manage the editorial workspace.",
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "submitLogin": "Enter studio",
+    "submitRegister": "Create account",
+    "pending": "Signing in...",
+    "switchToLogin": "I already have an account",
+    "switchToRegister": "Create account",
+    "demoHint": "Demo: demo@blog.local / password123"
+  },
+  "adminPosts": {
+    "eyebrow": "Admin",
+    "title": "All posts",
+    "status": "Editorial management",
+    "createEyebrow": "Publishing",
+    "createTitle": "New post",
+    "libraryEyebrow": "Archive",
+    "libraryTitle": "Posts",
+    "search": "Search posts...",
+    "allStatuses": "All statuses",
+    "empty": "No posts match this filter.",
+    "metrics": {
+      "total": "Total",
+      "published": "Published",
+      "drafts": "Drafts",
+      "archived": "Archived"
+    }
+  },
+  "authorStudio": {
+    "eyebrow": "Author",
+    "title": "Studio",
+    "createEyebrow": "Writing",
+    "createTitle": "New post",
+    "focusEyebrow": "Focus",
+    "focusTitle": "Writing stats",
+    "manageEyebrow": "Manage",
+    "manageTitle": "Your posts",
+    "accountAdmin": "Admin publishing account",
+    "accountAuthor": "Author account",
+    "ownership": "Ownership",
+    "longestPost": "Longest post",
+    "noPosts": "No posts for this author yet.",
+    "loading": "Loading posts...",
+    "edit": "Edit",
+    "delete": "Delete",
+    "latestNone": "None",
+    "bylineFallback": "user",
+    "metrics": {
+      "posts": "Your posts",
+      "words": "Total words",
+      "average": "Average words",
+      "latest": "Latest"
+    }
+  },
+  "adminSettings": {
+    "eyebrow": "Admin",
+    "title": "Settings",
+    "status": "Production checks ready",
+    "publishingEyebrow": "Publishing",
+    "publishingTitle": "Workspace policy",
+    "securityEyebrow": "Security",
+    "securityTitle": "Access rules",
+    "peopleEyebrow": "People",
+    "peopleTitle": "User roles",
+    "contentEyebrow": "Content",
+    "contentTitle": "Recent posts",
+    "categoriesEyebrow": "Taxonomy",
+    "categoriesTitle": "Categories",
+    "categoryCode": "Category code",
+    "categoryName": "Category name",
+    "categoryNativeName": "Display name",
+    "categoryCodePlaceholder": "example-design",
+    "categoryNamePlaceholder": "Design",
+    "categoryNativeNamePlaceholder": "Design",
+    "addCategory": "Add category",
+    "siteName": "Site name",
+    "publicRegistration": "Public registration",
+    "publicRegistrationHelp": "New accounts join as authors.",
+    "manualReview": "Manual review",
+    "manualReviewHelp": "Hold new posts before publishing.",
+    "authorLimit": "Daily post limit per author",
+    "adminArea": "Admin area",
+    "adminAreaHelp": "Restricted to admin role.",
+    "authorStudio": "Author studio",
+    "authorStudioHelp": "Available to authors and admins.",
+    "sessionLifetime": "Session lifetime",
+    "sessionLifetimeHelp": "JWT expires after 7 days.",
+    "rateLimit": "Rate limit",
+    "rateLimitHelp": "Fastify global limiter.",
+    "enforced": "Enforced",
+    "days7": "7 days",
+    "perMinute": "100/min",
+    "searchUsers": "Search users...",
+    "loadingUsers": "Loading users...",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "joined": "Joined",
+    "by": "by",
+    "metrics": {
+      "posts": "Posts",
+      "users": "Users",
+      "admins": "Admins",
+      "activeAuthors": "Active authors"
+    }
+  },
+  "postValidation": {
+    "title": "The title must contain at least 3 characters.",
+    "slug": "The slug must contain at least 3 characters and use only lowercase letters, numbers, and hyphens.",
+    "excerpt": "The excerpt must contain at least 20 characters.",
+    "content": "The content must contain at least 10 characters.",
+    "readTime": "Choose a reading time.",
+    "language": "Complete all required fields for this language.",
+    "invalid": "Check the entered values before submitting."
+  }
+}

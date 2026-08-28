@@ -1,0 +1,76 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1771841955096,
+      "tag": "0000_sturdy_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787906895122,
+      "tag": "0001_stormy_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787916756152,
+      "tag": "0002_high_odin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787917627237,
+      "tag": "0003_loose_dazzler",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787921413728,
+      "tag": "0004_concerned_terror",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787923000000,
+      "tag": "0005_backfill_legacy_posts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787924411343,
+      "tag": "0006_skinny_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787925182019,
+      "tag": "0007_cold_archangel",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787926532705,
+      "tag": "0008_rainy_darwin",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787926777707,
+      "tag": "0009_strong_colleen_wing",
+      "breakpoints": true
+    }
+  ]
+}

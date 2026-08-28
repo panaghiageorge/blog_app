@@ -1,0 +1,297 @@
+{
+  "metaTitle": "Field Notes | Blog editorial",
+  "brand": {
+    "name": "Field Notes",
+    "aria": "Field Notes, pagina principală"
+  },
+  "nav": {
+    "home": "Acasă",
+    "studio": "Studio",
+    "settings": "Setări",
+    "allPosts": "Toate postările",
+    "login": "Autentificare",
+    "logout": "Ieșire"
+  },
+  "theme": {
+    "switchToDark": "Schimbă pe modul întunecat",
+    "switchToLight": "Schimbă pe modul luminos"
+  },
+  "language": {
+    "label": "Limbă",
+    "ro": "Română",
+    "en": "Engleză"
+  },
+  "home": {
+    "categoryLabel": "Categorii postări",
+    "kicker": "Publicare independentă, făcută calm",
+    "headline": [
+      "Idei pentru",
+      "oameni care",
+      "scriu online."
+    ],
+    "intro": "O sală de lectură publică, cu eseuri practice despre design, produs, fluxuri editoriale și meșteșugul din spatele blogurilor gândite cu grijă.",
+    "leadAction": "Începe cu articolul principal",
+    "browseAction": "Vezi toate postările",
+    "latest": "Noutăți",
+    "allPosts": "Toate postările",
+    "searchPlaceholder": "Caută în arhivă",
+    "noResults": "Nu am găsit postări pentru filtrul ales.",
+    "offlineFallback": "API-ul nu răspunde momentan, așa că afișez conținutul local de rezervă.",
+    "newsletterTitle": "Note de duminică",
+    "newsletterBody": "Un digest scurt, săptămânal, cu cele mai bune postări, linkuri utile și o întrebare bună de luat în săptămână.",
+    "emailPlaceholder": "tu@example.com",
+    "subscribe": "Abonează-te",
+    "popular": "Populare",
+    "categories": {
+      "all": "Toate",
+      "design": "Design",
+      "publishing": "Publicare",
+      "essays": "Eseuri",
+      "product": "Produs"
+    }
+  },
+  "postPage": {
+    "back": "Înapoi la toate postările",
+    "by": "de",
+    "share": "Link copiat",
+    "copyLink": "Copiază linkul",
+    "saved": "Salvează pentru mai târziu",
+    "authorTitle": "Autor",
+    "authorBio": "Scrie despre interfețe editoriale, ritmuri de publicare și decizii de produs care ajută ideile să respire.",
+    "articleLabel": "Articol",
+    "continueReading": "Continuă cu",
+    "relatedTitle": "De citit mai departe",
+    "loading": "Se încarcă postarea...",
+    "notFoundTitle": "Postarea nu există",
+    "notFoundBody": "Linkul pare să ducă spre o postare care nu mai este în arhivă.",
+    "sections": {
+      "design": [
+        {
+          "title": "Ritmul începe cu suprafața",
+          "body": "Un blog bun nu se simte ca o pagină încărcată, ci ca un loc în care cititorul poate intra repede în text. Spațiul liber, ierarhia clară și imaginile calme reduc zgomotul înainte ca primul paragraf să ceară atenție."
+        },
+        {
+          "title": "Detaliile mici țin cititorul aproape",
+          "body": "Etichetele, timpul de lectură și stările de hover nu sunt ornamente. Ele spun ce fel de material urmează, câtă energie cere și unde poate merge cititorul după ce termină."
+        },
+        {
+          "title": "Designul editorial trebuie să reziste",
+          "body": "O interfață pentru conținut are nevoie de reguli simple care funcționează și când apar titluri lungi, imagini lipsă sau texte traduse. Când sistemul rezistă acestor cazuri, site-ul pare lucrat, nu improvizat."
+        }
+      ],
+      "publishing": [
+        {
+          "title": "Un homepage bun are opinie",
+          "body": "Publicarea nu înseamnă să pui totul pe ecran. Înseamnă să alegi ce deschide conversația, ce merită scos în față și ce poate sta în arhivă până când cititorul caută exact acel lucru."
+        },
+        {
+          "title": "Cadența contează mai mult decât volumul",
+          "body": "Un blog care se simte viu are repere recurente: categorii previzibile, serii, newsletter, autori recognoscibili. Aceste repere creează încredere chiar și când postările apar la intervale diferite."
+        },
+        {
+          "title": "Arhiva trebuie să invite, nu să obosească",
+          "body": "Filtrele, căutarea și listele populare transformă un teanc de articole într-un spațiu navigabil. Cititorul nu simte că sapă după valoare; simte că site-ul îi arată trasee posibile."
+        }
+      ],
+      "essays": [
+        {
+          "title": "Arhiva este memoria blogului",
+          "body": "Eseurile bune au viață lungă dacă sunt așezate într-o structură care le lasă să fie găsite. O arhivă personală trebuie să păstreze legături între idei, nu doar o cronologie rece."
+        },
+        {
+          "title": "Recența nu este singurul semnal",
+          "body": "Un articol mai vechi poate fi cel mai potrivit răspuns pentru un cititor nou. De aceea, homepage-ul are nevoie de zone care combină noutatea cu recomandarea editorială."
+        },
+        {
+          "title": "Tonul construiește relația",
+          "body": "Un blog memorabil nu câștigă prin volum, ci prin voce. Titlurile, descrierile și modul în care sunt grupate textele trebuie să sune ca o persoană atentă, nu ca un inventar."
+        }
+      ],
+      "product": [
+        {
+          "title": "Fricțiunea bună protejează munca",
+          "body": "Într-un instrument de publicare, nu orice pas în plus este o problemă. Unele confirmări, previzualizări și limite îi ajută pe autori să evite greșeli care ar costa timp sau încredere."
+        },
+        {
+          "title": "Autorii au nevoie de semnale clare",
+          "body": "Statusul unei postări, progresul editării și istoricul schimbărilor trebuie să fie ușor de scanat. Când datele sunt aproape de acțiune, deciziile devin mai rapide."
+        },
+        {
+          "title": "Produsul trebuie să dispară la momentul potrivit",
+          "body": "Un dashboard bun susține scrisul fără să se bage în față. El oferă control când este nevoie și liniște când autorul trebuie să rămână în text."
+        }
+      ]
+    },
+    "pullQuotes": {
+      "design": "Un blog pare premium când fiecare detaliu îi reduce cititorului efortul de a începe.",
+      "publishing": "Editorialul bun nu listează tot. Alege trasee și are curajul să spună de unde merită început.",
+      "essays": "O arhivă vie nu este un depozit. Este o hartă a ideilor care încă au ceva de spus.",
+      "product": "Fricțiunea potrivită nu încetinește autorul; îl ajută să publice cu mai multă încredere."
+    }
+  },
+  "postForm": {
+    "title": "Titlu",
+    "slug": "Slug",
+    "excerpt": "Rezumat",
+    "content": "Conținut",
+    "category": "Categorie",
+    "status": "Status",
+    "readTime": "Timp de citire",
+    "image": "Imagine de copertă",
+    "metaTitleSection": "Meta și SEO",
+    "metaTitle": "Meta title",
+    "metaDescription": "Meta description",
+    "keywords": "Cuvinte-cheie",
+    "languageTab": "Traducere",
+    "translationHint": "Completează fiecare limbă activă înainte de trimitere.",
+    "noActiveLanguages": "Nu există limbi active configurate.",
+    "workflowHelp": "Postarea este salvată ca draft și poate fi publicată doar de un admin.",
+    "archiveHelp": "După publicare, poți arhiva postarea dacă nu mai este activă.",
+    "optionalReadTime": "Alege timpul estimat de citire",
+    "create": "Creează postare",
+    "creating": "Se creează...",
+    "save": "Salvează modificările",
+    "saving": "Se salvează...",
+    "cancel": "Renunță",
+    "preview": "Previzualizare",
+    "editDetails": "Detalii",
+    "editContent": "Text",
+    "wordCount": "cuvinte",
+    "statusOptions": {
+      "draft": "Draft",
+      "published": "Publicată",
+      "archived": "Arhivată"
+    },
+    "placeholders": {
+      "title": "Titlul postării",
+      "slug": "titlul-postarii",
+      "excerpt": "O descriere scurtă pentru card și meta.",
+      "content": "Scrie postarea aici...",
+      "readTime": "6 min",
+      "image": "https://exemplu.ro/imagine.jpg",
+      "metaTitle": "Titlu pentru motoarele de căutare",
+      "metaDescription": "Descrierea afișată în rezultatele căutării.",
+      "keywords": "blog, editorial, articol"
+    }
+  },
+  "auth": {
+    "titleLogin": "Autentificare",
+    "titleRegister": "Cont nou",
+    "eyebrow": "Acces editorial",
+    "intro": "Intră în studio ca să creezi drafturi, să publici articole și să gestionezi zona editorială.",
+    "name": "Nume",
+    "email": "Email",
+    "password": "Parolă",
+    "submitLogin": "Intră în studio",
+    "submitRegister": "Creează cont",
+    "pending": "Te autentific...",
+    "switchToLogin": "Am deja cont",
+    "switchToRegister": "Creează cont nou",
+    "demoHint": "Demo: demo@blog.local / password123"
+  },
+  "adminPosts": {
+    "eyebrow": "Admin",
+    "title": "Toate postările",
+    "status": "Management editorial",
+    "createEyebrow": "Publicare",
+    "createTitle": "Postare nouă",
+    "libraryEyebrow": "Arhivă",
+    "libraryTitle": "Postări",
+    "search": "Caută postări...",
+    "allStatuses": "Toate statusurile",
+    "empty": "Nu există postări pentru filtrul ales.",
+    "metrics": {
+      "total": "Total",
+      "published": "Publicate",
+      "drafts": "Drafturi",
+      "archived": "Arhivate"
+    }
+  },
+  "authorStudio": {
+    "eyebrow": "Autor",
+    "title": "Studio",
+    "createEyebrow": "Scriere",
+    "createTitle": "Postare nouă",
+    "focusEyebrow": "Focus",
+    "focusTitle": "Statistici",
+    "manageEyebrow": "Management",
+    "manageTitle": "Postările tale",
+    "accountAdmin": "Cont de publicare admin",
+    "accountAuthor": "Cont de autor",
+    "ownership": "Rol",
+    "longestPost": "Cea mai lungă postare",
+    "noPosts": "Nu există încă postări pentru acest autor.",
+    "loading": "Se încarcă postările...",
+    "edit": "Editează",
+    "delete": "Șterge",
+    "latestNone": "Niciuna",
+    "bylineFallback": "utilizator",
+    "metrics": {
+      "posts": "Postările tale",
+      "words": "Total cuvinte",
+      "average": "Medie cuvinte",
+      "latest": "Ultima"
+    }
+  },
+  "adminSettings": {
+    "eyebrow": "Admin",
+    "title": "Setări",
+    "status": "Verificări pregătite",
+    "publishingEyebrow": "Publicare",
+    "publishingTitle": "Politici workspace",
+    "securityEyebrow": "Securitate",
+    "securityTitle": "Reguli acces",
+    "peopleEyebrow": "Echipă",
+    "peopleTitle": "Roluri utilizatori",
+    "contentEyebrow": "Conținut",
+    "contentTitle": "Postări recente",
+    "categoriesEyebrow": "Taxonomie",
+    "categoriesTitle": "Categorii",
+    "categoryCode": "Cod categorie",
+    "categoryName": "Nume categorie",
+    "categoryNativeName": "Nume afișat",
+    "categoryCodePlaceholder": "exemplu-design",
+    "categoryNamePlaceholder": "Design",
+    "categoryNativeNamePlaceholder": "Design",
+    "addCategory": "Adaugă categoria",
+    "siteName": "Nume site",
+    "publicRegistration": "Înregistrare publică",
+    "publicRegistrationHelp": "Conturile noi intră ca autori.",
+    "manualReview": "Review manual",
+    "manualReviewHelp": "Postările noi stau în așteptare înainte de publicare.",
+    "authorLimit": "Limită zilnică de postări per autor",
+    "adminArea": "Zona admin",
+    "adminAreaHelp": "Restricționată la rolul admin.",
+    "authorStudio": "Studio autor",
+    "authorStudioHelp": "Disponibil pentru autori și admini.",
+    "sessionLifetime": "Durată sesiune",
+    "sessionLifetimeHelp": "JWT expiră după 7 zile.",
+    "rateLimit": "Rate limit",
+    "rateLimitHelp": "Limiter global Fastify.",
+    "enforced": "Activ",
+    "days7": "7 zile",
+    "perMinute": "100/min",
+    "searchUsers": "Caută utilizatori...",
+    "loadingUsers": "Se încarcă utilizatorii...",
+    "name": "Nume",
+    "email": "Email",
+    "role": "Rol",
+    "joined": "Creat",
+    "by": "de",
+    "metrics": {
+      "posts": "Postări",
+      "users": "Utilizatori",
+      "admins": "Admini",
+      "activeAuthors": "Autori activi"
+    }
+  },
+  "postValidation": {
+    "title": "Titlul trebuie să aibă cel puțin 3 caractere.",
+    "slug": "Slug-ul trebuie să aibă cel puțin 3 caractere și doar litere mici, cifre și liniuțe.",
+    "excerpt": "Rezumatul trebuie să aibă cel puțin 20 de caractere.",
+    "content": "Conținutul trebuie să aibă cel puțin 10 caractere.",
+    "readTime": "Alege timpul de citire.",
+    "language": "Completează toate câmpurile obligatorii pentru această limbă.",
+    "invalid": "Verifică datele introduse înainte de trimitere."
+  }
+}

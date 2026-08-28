@@ -1,0 +1,25 @@
+{
+  "name": "blog",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "dev:api": "npm run dev --workspace=@blog/api",
+    "dev:web": "npm run dev --workspace=@blog/web",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:generate": "npm run db:generate --workspace=@blog/api",
+    "db:migrate": "npm run db:migrate --workspace=@blog/api",
+    "db:seed": "npm run db:seed --workspace=@blog/api"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2"
+  }
+}
