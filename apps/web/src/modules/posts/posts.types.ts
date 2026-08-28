@@ -47,7 +47,7 @@ export type PostItem = {
   slug: string;
   excerpt: string;
   category: string;
-  status: "draft" | "published" | "archived";
+  status: "draft" | "pending_review" | "published" | "archived";
   readTime: string;
   content: string;
   publishedAt: string | null;

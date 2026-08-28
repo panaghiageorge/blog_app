@@ -29,7 +29,14 @@ const createSlug = (value: string) =>
     .replace(/^-+|-+$/g, "")
     .slice(0, 200);
 
-const readTimeOptions = ["5 min", "10 min", "15 min", "20 min", "30 min", "+30 min"];
+const readTimeOptions = [
+  "5 min",
+  "10 min",
+  "15 min",
+  "20 min",
+  "30 min",
+  "+30 min",
+];
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type ValidationErrors = Record<string, string[]>;
@@ -49,8 +56,18 @@ const validateTranslations = (
     ) {
       fieldErrors.push(messages.slug);
     }
-    if (translation.excerpt.trim().length < 20) fieldErrors.push(messages.excerpt);
-    if (translation.content.trim().length < 10) fieldErrors.push(messages.content);
+    if (translation.excerpt.trim().length < 20)
+      fieldErrors.push(messages.excerpt);
+    if (translation.excerpt.trim().length > 320)
+      fieldErrors.push(messages.excerptMax);
+    if ((translation.metaTitle ?? "").trim().length > 180)
+      fieldErrors.push(messages.metaTitleMax);
+    if ((translation.metaDescription ?? "").trim().length > 320)
+      fieldErrors.push(messages.metaDescriptionMax);
+    if ((translation.keywords ?? "").trim().length > 500)
+      fieldErrors.push(messages.keywordsMax);
+    if (translation.content.trim().length < 10)
+      fieldErrors.push(messages.content);
     if (!readTimeOptions.includes(translation.readTime ?? "")) {
       fieldErrors.push(messages.readTime);
     }
@@ -79,7 +96,10 @@ const translationsFor = (
     );
 
     return existingTranslation
-      ? { ...existingTranslation, readTime: existingTranslation.readTime || "5 min" }
+      ? {
+          ...existingTranslation,
+          readTime: existingTranslation.readTime || "5 min",
+        }
       : emptyTranslation(language.code);
   });
 
@@ -111,7 +131,9 @@ export const CreatePostForm = ({
     imageUrl: "",
     translations: [],
   });
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {},
+  );
 
   useEffect(() => {
     if (languages.length === 0 || categories.length === 0) return;
@@ -124,7 +146,9 @@ export const CreatePostForm = ({
           : categories[0].code),
       status: isAdmin
         ? (initialValue?.status ?? current.status ?? "draft")
-        : (initialValue?.status === "published" ? "published" : "draft"),
+        : initialValue?.status === "published"
+          ? "published"
+          : "draft",
       imageUrl: initialValue?.imageUrl ?? current.imageUrl ?? "",
       translations: translationsFor(
         languages,
@@ -256,9 +280,7 @@ export const CreatePostForm = ({
               </button>
             ))}
           </div>
-          <p className="translation-hint">
-            {copy.postForm.translationHint}
-          </p>
+          <p className="translation-hint">{copy.postForm.translationHint}</p>
           <p className="translation-hint">
             {isAdmin ? copy.postForm.workflowHelp : copy.postForm.archiveHelp}
           </p>
@@ -285,7 +307,9 @@ export const CreatePostForm = ({
                 })
               }
               placeholder={copy.postForm.placeholders.title}
-              aria-invalid={activeErrors.includes(localeCopy.postValidation.title)}
+              aria-invalid={activeErrors.includes(
+                localeCopy.postValidation.title,
+              )}
               required
             />
           </label>
@@ -300,7 +324,9 @@ export const CreatePostForm = ({
                 })
               }
               placeholder={copy.postForm.placeholders.slug}
-              aria-invalid={activeErrors.includes(localeCopy.postValidation.slug)}
+              aria-invalid={activeErrors.includes(
+                localeCopy.postValidation.slug,
+              )}
               required
             />
           </label>
@@ -316,7 +342,9 @@ export const CreatePostForm = ({
                   })
                 }
                 required
-                aria-invalid={activeErrors.includes(localeCopy.postValidation.readTime)}
+                aria-invalid={activeErrors.includes(
+                  localeCopy.postValidation.readTime,
+                )}
               >
                 {readTimeOptions.map((option) => (
                   <option key={option} value={option}>
@@ -346,35 +374,46 @@ export const CreatePostForm = ({
                 ))}
               </select>
             </label>
-            {initialValue && <label className="field">
-              <span>{copy.postForm.status}</span>
-              <select
-                value={payload.status ?? "draft"}
-                disabled={!isAdmin && initialValue?.status !== "published"}
-                onChange={(event) =>
-                  setPayload({
-                    ...payload,
-                    status: event.target.value as PostPayload["status"],
-                  })
-                }
-              >
-                {(isAdmin || !initialValue || initialValue.status === "draft") && (
-                  <option value="draft">{copy.postForm.statusOptions.draft}</option>
-                )}
-                {(isAdmin || initialValue?.status === "published") && (
-                  <option value="published">
-                    {copy.postForm.statusOptions.published}
-                  </option>
-                )}
-                {(isAdmin ||
-                  initialValue?.status === "published" ||
-                  initialValue?.status === "archived") && (
-                  <option value="archived">
-                    {copy.postForm.statusOptions.archived}
-                  </option>
-                )}
-              </select>
-            </label>}
+            {initialValue && (
+              <label className="field">
+                <span>{copy.postForm.status}</span>
+                <select
+                  value={payload.status ?? "draft"}
+                  disabled={!isAdmin && initialValue?.status === "published"}
+                  onChange={(event) =>
+                    setPayload({
+                      ...payload,
+                      status: event.target.value as PostPayload["status"],
+                    })
+                  }
+                >
+                  {(isAdmin ||
+                    !initialValue ||
+                    initialValue.status === "draft") && (
+                    <option value="draft">
+                      {copy.postForm.statusOptions.draft}
+                    </option>
+                  )}
+                  {(isAdmin || initialValue?.status === "draft") && (
+                    <option value="pending_review">
+                      {copy.postForm.statusOptions.pending_review}
+                    </option>
+                  )}
+                  {(isAdmin || initialValue?.status === "published") && (
+                    <option value="published">
+                      {copy.postForm.statusOptions.published}
+                    </option>
+                  )}
+                  {(isAdmin ||
+                    initialValue?.status === "published" ||
+                    initialValue?.status === "archived") && (
+                    <option value="archived">
+                      {copy.postForm.statusOptions.archived}
+                    </option>
+                  )}
+                </select>
+              </label>
+            )}
           </div>
 
           <label className="field">
@@ -443,8 +482,11 @@ export const CreatePostForm = ({
                 })
               }
               placeholder={copy.postForm.placeholders.excerpt}
+              maxLength={320}
               required
-              aria-invalid={activeErrors.includes(localeCopy.postValidation.excerpt)}
+              aria-invalid={activeErrors.includes(
+                localeCopy.postValidation.excerpt,
+              )}
               rows={3}
             />
           </label>
@@ -459,7 +501,9 @@ export const CreatePostForm = ({
               }
               placeholder={copy.postForm.placeholders.content}
               required
-              aria-invalid={activeErrors.includes(localeCopy.postValidation.content)}
+              aria-invalid={activeErrors.includes(
+                localeCopy.postValidation.content,
+              )}
               rows={10}
             />
           </label>
@@ -469,18 +513,26 @@ export const CreatePostForm = ({
           <div className="section-heading compact-heading">
             <div>
               <p className="eyebrow">{copy.postForm.preview}</p>
-              <h3>{activeTranslation.title || copy.postForm.placeholders.title}</h3>
+              <h3>
+                {activeTranslation.title || copy.postForm.placeholders.title}
+              </h3>
             </div>
           </div>
-          <p>{activeTranslation.excerpt || copy.postForm.placeholders.excerpt}</p>
+          <p>
+            {activeTranslation.excerpt || copy.postForm.placeholders.excerpt}
+          </p>
           <div className="preview-meta">
             <span>
               {copy.home.categories[
-                (payload.category ?? "design") as keyof typeof copy.home.categories
+                (payload.category ??
+                  "design") as keyof typeof copy.home.categories
               ] ?? payload.category}
             </span>
             <span>
-              {activeTranslation.content.trim().split(/\s+/).filter(Boolean).length}{" "}
+              {
+                activeTranslation.content.trim().split(/\s+/).filter(Boolean)
+                  .length
+              }{" "}
               {copy.postForm.wordCount}
             </span>
             <span>

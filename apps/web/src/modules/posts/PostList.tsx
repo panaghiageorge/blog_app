@@ -1,7 +1,13 @@
+import type { ReactNode } from "react";
 import { useI18n } from "../../i18n/I18nContext";
 import type { PostItem } from "./posts.types";
 
-export const PostList = ({ items }: { items: PostItem[] }) => {
+type Props = {
+  items: PostItem[];
+  renderAction?: (item: PostItem) => ReactNode;
+};
+
+export const PostList = ({ items, renderAction }: Props) => {
   const { copy } = useI18n();
 
   return (
@@ -12,13 +18,19 @@ export const PostList = ({ items }: { items: PostItem[] }) => {
             <div>
               <h3>{item.title}</h3>
               <small>
-                @{item.slug} - {copy.home.categories[item.category as keyof typeof copy.home.categories] ?? item.category} -{" "}
-                {item.authorName ?? `user#${item.authorId}`}
+                @{item.slug} -{" "}
+                {copy.home.categories[
+                  item.category as keyof typeof copy.home.categories
+                ] ?? item.category}{" "}
+                - {item.authorName ?? `user#${item.authorId}`}
               </small>
             </div>
-            <span className={`status-pill status-${item.status}`}>
-              {copy.postForm.statusOptions[item.status]}
-            </span>
+            <div className="management-post-actions">
+              <span className={`status-pill status-${item.status}`}>
+                {copy.postForm.statusOptions[item.status]}
+              </span>
+              {renderAction?.(item)}
+            </div>
           </div>
           <p>{item.excerpt}</p>
         </li>

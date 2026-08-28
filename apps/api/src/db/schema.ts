@@ -14,6 +14,7 @@ import {
 export const userRole = pgEnum("user_role", ["admin", "author"]);
 export const postStatus = pgEnum("post_status", [
   "draft",
+  "pending_review",
   "published",
   "archived",
 ]);
@@ -64,9 +65,7 @@ export const posts = pgTable("posts", {
   title: varchar("title", { length: 180 }).notNull(),
   slug: varchar("slug", { length: 200 }).notNull().unique(),
   excerpt: varchar("excerpt", { length: 320 }).notNull().default(""),
-  category: varchar("category", { length: 40 })
-    .notNull()
-    .default("publishing"),
+  category: varchar("category", { length: 40 }).notNull().default("publishing"),
   status: postStatus("status").notNull().default("draft"),
   readTime: varchar("read_time", { length: 40 }).notNull().default("5 min"),
   content: text("content").notNull(),

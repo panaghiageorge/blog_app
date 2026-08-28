@@ -82,10 +82,7 @@ const getCurrentUserRole = async (app: FastifyInstance, userId: number) => {
   return user?.role;
 };
 
-const getRequestedLanguage = async (
-  app: FastifyInstance,
-  query: unknown,
-) => {
+const getRequestedLanguage = async (app: FastifyInstance, query: unknown) => {
   const parsed = languageQuerySchema.safeParse(query);
   const requestedCode = parsed.success ? parsed.data.language : undefined;
 
@@ -168,7 +165,9 @@ const getTranslationLanguageIds = async (
   const rows = await app.db.query.languages.findMany({
     where: inArray(languages.code, codes),
   });
-  const languageMap = new Map(rows.map((language) => [language.code, language]));
+  const languageMap = new Map(
+    rows.map((language) => [language.code, language]),
+  );
   const missingCode = codes.find((code) => !languageMap.get(code)?.isActive);
 
   if (missingCode) {
@@ -216,71 +215,77 @@ const getPostTranslationsByPostIds = async (
 };
 
 export const postRoutes: FastifyPluginAsync = async (app) => {
-  app.get("/", {
-    schema: {
-      tags: ["Posts"],
-      summary: "List published posts",
-      querystring: postsQuery,
-    },
-  }, async (request, reply) => {
-    const parsed = paginationQuerySchema.safeParse(request.query);
-    if (!parsed.success) {
-      return reply
-        .code(400)
-        .send({ message: "Invalid query", issues: parsed.error.flatten() });
-    }
-
-    const language = await getRequestedLanguage(app, request.query);
-    if (!language) {
-      return reply.code(500).send({ message: "No active language configured" });
-    }
-
-    const { page, pageSize, search } = parsed.data;
-    const publicCondition = eq(posts.status, "published");
-    const languageCondition = eq(postTranslations.languageId, language.id);
-    const searchCondition = search
-      ? or(
-          ilike(postTranslations.title, `%${search}%`),
-          ilike(postTranslations.excerpt, `%${search}%`),
-          ilike(postTranslations.content, `%${search}%`),
-        )
-      : undefined;
-    const whereCondition = and(
-      publicCondition,
-      languageCondition,
-      searchCondition,
-    );
-
-    const itemsQuery = app.db
-      .select(translatedPostColumns)
-      .from(posts)
-      .innerJoin(users, eq(posts.authorId, users.id))
-      .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
-      .innerJoin(languages, eq(postTranslations.languageId, languages.id))
-      .where(whereCondition)
-      .orderBy(desc(posts.publishedAt))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize);
-
-    const countQuery = app.db
-      .select({ total: count() })
-      .from(posts)
-      .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
-      .where(whereCondition);
-
-    const [items, totalResult] = await Promise.all([itemsQuery, countQuery]);
-
-    const total = Number(totalResult[0]?.total ?? 0);
-    return reply.send({
-      items: items.map(withFallbackExcerpt),
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  app.get(
+    "/",
+    {
+      schema: {
+        tags: ["Posts"],
+        summary: "List published posts",
+        querystring: postsQuery,
       },
-    });
-  });
+    },
+    async (request, reply) => {
+      const parsed = paginationQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ message: "Invalid query", issues: parsed.error.flatten() });
+      }
+
+      const language = await getRequestedLanguage(app, request.query);
+      if (!language) {
+        return reply
+          .code(500)
+          .send({ message: "No active language configured" });
+      }
+
+      const { page, pageSize, search } = parsed.data;
+      const publicCondition = eq(posts.status, "published");
+      const languageCondition = eq(postTranslations.languageId, language.id);
+      const searchCondition = search
+        ? or(
+            ilike(postTranslations.title, `%${search}%`),
+            ilike(postTranslations.excerpt, `%${search}%`),
+            ilike(postTranslations.content, `%${search}%`),
+          )
+        : undefined;
+      const whereCondition = and(
+        publicCondition,
+        languageCondition,
+        searchCondition,
+      );
+
+      const itemsQuery = app.db
+        .select(translatedPostColumns)
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .innerJoin(languages, eq(postTranslations.languageId, languages.id))
+        .where(whereCondition)
+        .orderBy(desc(posts.publishedAt))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      const countQuery = app.db
+        .select({ total: count() })
+        .from(posts)
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .where(whereCondition);
+
+      const [items, totalResult] = await Promise.all([itemsQuery, countQuery]);
+
+      const total = Number(totalResult[0]?.total ?? 0);
+      return reply.send({
+        items: items.map(withFallbackExcerpt),
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        },
+      });
+    },
+  );
 
   app.get(
     "/manage",
@@ -372,229 +377,290 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.get("/slug/:slug", {
-    schema: {
-      tags: ["Posts"],
-      summary: "Get a published post by slug",
-      params: slugParams,
-      querystring: languageQuery,
+  app.get(
+    "/slug/:slug",
+    {
+      schema: {
+        tags: ["Posts"],
+        summary: "Get a published post by slug",
+        params: slugParams,
+        querystring: languageQuery,
+      },
     },
-  }, async (request, reply) => {
-    const parsed = slugParamSchema.safeParse(request.params);
-    if (!parsed.success) {
-      return reply.code(400).send({ message: "Invalid post slug" });
-    }
-
-    const language = await getRequestedLanguage(app, request.query);
-    if (!language) {
-      return reply.code(500).send({ message: "No active language configured" });
-    }
-
-    let [post] = await app.db
-      .select(translatedPostColumns)
-      .from(posts)
-      .innerJoin(users, eq(posts.authorId, users.id))
-      .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
-      .innerJoin(languages, eq(postTranslations.languageId, languages.id))
-      .where(
-        and(
-          eq(postTranslations.slug, parsed.data.slug),
-          eq(postTranslations.languageId, language.id),
-          eq(posts.status, "published"),
-        ),
-      )
-      .limit(1);
-
-    if (!post) {
-      const [postWithSlug] = await app.db
-        .select({ postId: postTranslations.postId })
-        .from(postTranslations)
-        .where(eq(postTranslations.slug, parsed.data.slug))
-        .limit(1);
-
-      if (postWithSlug) {
-        [post] = await app.db
-          .select(translatedPostColumns)
-          .from(posts)
-          .innerJoin(users, eq(posts.authorId, users.id))
-          .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
-          .innerJoin(languages, eq(postTranslations.languageId, languages.id))
-          .where(
-            and(
-              eq(posts.id, postWithSlug.postId),
-              eq(postTranslations.languageId, language.id),
-              eq(posts.status, "published"),
-            ),
-          )
-          .limit(1);
+    async (request, reply) => {
+      const parsed = slugParamSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: "Invalid post slug" });
       }
-    }
 
-    if (!post) {
-      return reply.code(404).send({ message: "Post not found" });
-    }
-
-    return reply.send({ item: withFallbackExcerpt(post) });
-  });
-
-  app.get("/:id", {
-    schema: {
-      tags: ["Posts"],
-      summary: "Get a published post by ID",
-      params: idParams,
-      querystring: languageQuery,
-    },
-  }, async (request, reply) => {
-    const parsed = idParamSchema.safeParse(request.params);
-    if (!parsed.success) {
-      return reply.code(400).send({ message: "Invalid post id" });
-    }
-
-    const language = await getRequestedLanguage(app, request.query);
-    if (!language) {
-      return reply.code(500).send({ message: "No active language configured" });
-    }
-
-    const [post] = await app.db
-      .select(translatedPostColumns)
-      .from(posts)
-      .innerJoin(users, eq(posts.authorId, users.id))
-      .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
-      .innerJoin(languages, eq(postTranslations.languageId, languages.id))
-      .where(
-        and(
-          eq(posts.id, parsed.data.id),
-          eq(postTranslations.languageId, language.id),
-          eq(posts.status, "published"),
-        ),
-      )
-      .limit(1);
-
-    if (!post) {
-      return reply.code(404).send({ message: "Post not found" });
-    }
-
-    return reply.send({ item: withFallbackExcerpt(post) });
-  });
-
-  app.post("/", {
-    preHandler: [app.authenticate],
-    schema: {
-      tags: ["Posts"],
-      summary: "Create a post",
-      security: bearerSecurity,
-      body: createPostBody,
-    },
-  }, async (request, reply) => {
-    const parsed = createPostInputSchema.safeParse(request.body);
-    if (!parsed.success) {
-      return reply
-        .code(400)
-        .send({ message: "Invalid payload", issues: parsed.error.flatten() });
-    }
-
-    const currentUserId = getCurrentUserId(request);
-    if (!currentUserId) {
-      return reply.code(401).send({ message: "Unauthorized" });
-    }
-    const postStatus = "draft" as const;
-    const category = await app.db.query.categories.findFirst({
-      where: eq(categories.code, parsed.data.category),
-    });
-    if (!category) {
-      return reply.code(400).send({ message: "Category not found" });
-    }
-
-    const defaultLanguage = await getRequestedLanguage(app, {});
-    if (!defaultLanguage) {
-      return reply.code(500).send({ message: "No active language configured" });
-    }
-
-    const translationPayloads = createTranslationPayloads(
-      parsed.data,
-      defaultLanguage.code,
-    );
-    const primaryTranslation = pickPrimaryTranslation(
-      translationPayloads,
-      defaultLanguage.code,
-    );
-    const languageResult = await getTranslationLanguageIds(
-      app,
-      translationPayloads,
-    );
-
-    if ("error" in languageResult) {
-      return reply.code(400).send({ message: languageResult.error });
-    }
-
-    for (const translation of translationPayloads) {
-      const language = languageResult.languageMap.get(translation.languageCode);
+      const language = await getRequestedLanguage(app, request.query);
       if (!language) {
         return reply
+          .code(500)
+          .send({ message: "No active language configured" });
+      }
+
+      let [post] = await app.db
+        .select(translatedPostColumns)
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .innerJoin(languages, eq(postTranslations.languageId, languages.id))
+        .where(
+          and(
+            eq(postTranslations.slug, parsed.data.slug),
+            eq(postTranslations.languageId, language.id),
+            eq(posts.status, "published"),
+          ),
+        )
+        .limit(1);
+
+      if (!post) {
+        const [postWithSlug] = await app.db
+          .select({ postId: postTranslations.postId })
+          .from(postTranslations)
+          .where(eq(postTranslations.slug, parsed.data.slug))
+          .limit(1);
+
+        if (postWithSlug) {
+          [post] = await app.db
+            .select(translatedPostColumns)
+            .from(posts)
+            .innerJoin(users, eq(posts.authorId, users.id))
+            .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+            .innerJoin(languages, eq(postTranslations.languageId, languages.id))
+            .where(
+              and(
+                eq(posts.id, postWithSlug.postId),
+                eq(postTranslations.languageId, language.id),
+                eq(posts.status, "published"),
+              ),
+            )
+            .limit(1);
+        }
+      }
+
+      if (!post) {
+        return reply.code(404).send({ message: "Post not found" });
+      }
+
+      return reply.send({ item: withFallbackExcerpt(post) });
+    },
+  );
+
+  app.get(
+    "/:id",
+    {
+      schema: {
+        tags: ["Posts"],
+        summary: "Get a published post by ID",
+        params: idParams,
+        querystring: languageQuery,
+      },
+    },
+    async (request, reply) => {
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: "Invalid post id" });
+      }
+
+      const language = await getRequestedLanguage(app, request.query);
+      if (!language) {
+        return reply
+          .code(500)
+          .send({ message: "No active language configured" });
+      }
+
+      const [post] = await app.db
+        .select(translatedPostColumns)
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .innerJoin(languages, eq(postTranslations.languageId, languages.id))
+        .where(
+          and(
+            eq(posts.id, parsed.data.id),
+            eq(postTranslations.languageId, language.id),
+            eq(posts.status, "published"),
+          ),
+        )
+        .limit(1);
+
+      if (!post) {
+        return reply.code(404).send({ message: "Post not found" });
+      }
+
+      return reply.send({ item: withFallbackExcerpt(post) });
+    },
+  );
+
+  app.post(
+    "/",
+    {
+      preHandler: [app.authenticate],
+      schema: {
+        tags: ["Posts"],
+        summary: "Create a post",
+        security: bearerSecurity,
+        body: createPostBody,
+      },
+    },
+    async (request, reply) => {
+      const parsed = createPostInputSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply
           .code(400)
-          .send({ message: `Language ${translation.languageCode} not found` });
+          .send({ message: "Invalid payload", issues: parsed.error.flatten() });
       }
 
-      const existing = await app.db.query.postTranslations.findFirst({
-        where: and(
-          eq(postTranslations.languageId, language.id),
-          eq(postTranslations.slug, translation.slug),
-        ),
-        columns: { id: true },
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) {
+        return reply.code(401).send({ message: "Unauthorized" });
+      }
+      const postStatus = "draft" as const;
+      const category = await app.db.query.categories.findFirst({
+        where: eq(categories.code, parsed.data.category),
       });
-
-      if (existing) {
-        return reply.code(409).send({ message: "Slug already in use" });
+      if (!category) {
+        return reply.code(400).send({ message: "Category not found" });
       }
-    }
 
-    const [createdPost] = await app.db
-      .insert(posts)
-      .values({
-        title: primaryTranslation.title,
-        slug: primaryTranslation.slug,
-        excerpt: primaryTranslation.excerpt,
-        category: parsed.data.category,
-        status: postStatus,
-        readTime: primaryTranslation.readTime,
-        content: primaryTranslation.content,
-        publishedAt: null,
-        authorId: currentUserId,
-        imageUrl: parsed.data.imageUrl,
-        categoryId: category.id,
-      })
-      .returning(postColumns);
+      const defaultLanguage = await getRequestedLanguage(app, {});
+      if (!defaultLanguage) {
+        return reply
+          .code(500)
+          .send({ message: "No active language configured" });
+      }
 
-    await app.db.insert(postTranslations).values(
-      translationPayloads.map((translation) => {
+      const translationPayloads = createTranslationPayloads(
+        parsed.data,
+        defaultLanguage.code,
+      );
+      const primaryTranslation = pickPrimaryTranslation(
+        translationPayloads,
+        defaultLanguage.code,
+      );
+      const languageResult = await getTranslationLanguageIds(
+        app,
+        translationPayloads,
+      );
+
+      if ("error" in languageResult) {
+        return reply.code(400).send({ message: languageResult.error });
+      }
+
+      for (const translation of translationPayloads) {
         const language = languageResult.languageMap.get(
           translation.languageCode,
         );
+        if (!language) {
+          return reply
+            .code(400)
+            .send({
+              message: `Language ${translation.languageCode} not found`,
+            });
+        }
 
-        return {
-          postId: createdPost.id,
-          languageId: language?.id ?? defaultLanguage.id,
-          metaTitle: translation.metaTitle,
-          metaDescription: translation.metaDescription,
-          keywords: translation.keywords,
-          title: translation.title,
-          slug: translation.slug,
-          excerpt: translation.excerpt,
-          readTime: translation.readTime,
-          content: translation.content,
-        };
-      }),
-    );
+        const existing = await app.db.query.postTranslations.findFirst({
+          where: and(
+            eq(postTranslations.languageId, language.id),
+            eq(postTranslations.slug, translation.slug),
+          ),
+          columns: { id: true },
+        });
 
-    return reply.code(201).send({
-      item: {
-        ...createdPost,
-        ...primaryTranslation,
-        languageCode: primaryTranslation.languageCode,
+        if (existing) {
+          return reply.code(409).send({ message: "Slug already in use" });
+        }
+      }
+
+      const [createdPost] = await app.db
+        .insert(posts)
+        .values({
+          title: primaryTranslation.title,
+          slug: primaryTranslation.slug,
+          excerpt: primaryTranslation.excerpt,
+          category: parsed.data.category,
+          status: postStatus,
+          readTime: primaryTranslation.readTime,
+          content: primaryTranslation.content,
+          publishedAt: null,
+          authorId: currentUserId,
+          imageUrl: parsed.data.imageUrl,
+          categoryId: category.id,
+        })
+        .returning(postColumns);
+
+      await app.db.insert(postTranslations).values(
+        translationPayloads.map((translation) => {
+          const language = languageResult.languageMap.get(
+            translation.languageCode,
+          );
+
+          return {
+            postId: createdPost.id,
+            languageId: language?.id ?? defaultLanguage.id,
+            metaTitle: translation.metaTitle,
+            metaDescription: translation.metaDescription,
+            keywords: translation.keywords,
+            title: translation.title,
+            slug: translation.slug,
+            excerpt: translation.excerpt,
+            readTime: translation.readTime,
+            content: translation.content,
+          };
+        }),
+      );
+
+      return reply.code(201).send({
+        item: {
+          ...createdPost,
+          ...primaryTranslation,
+          languageCode: primaryTranslation.languageCode,
+        },
+      });
+    },
+  );
+
+  app.post(
+    "/:id/publish",
+    {
+      preHandler: [app.authenticate, app.requireAdmin],
+      schema: {
+        tags: ["Posts"],
+        summary: "Publish a post",
+        security: bearerSecurity,
+        params: idParams,
       },
-    });
-  });
+    },
+    async (request, reply) => {
+      const parsedId = idParamSchema.safeParse(request.params);
+      if (!parsedId.success) {
+        return reply.code(400).send({ message: "Invalid post id" });
+      }
 
+      const existingPost = await app.db.query.posts.findFirst({
+        where: eq(posts.id, parsedId.data.id),
+        columns: { id: true },
+      });
+
+      if (!existingPost) {
+        return reply.code(404).send({ message: "Post not found" });
+      }
+
+      const [updatedPost] = await app.db
+        .update(posts)
+        .set({
+          status: "published",
+          publishedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, parsedId.data.id))
+        .returning(postColumns);
+
+      return reply.send({ item: updatedPost });
+    },
+  );
   app.patch(
     "/:id",
     {
@@ -640,10 +706,14 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
       if (
         updates.status &&
         currentUserRole !== "admin" &&
-        !(updates.status === "archived" && existingPost.publishedAt)
+        !(
+          updates.status === "pending_review" ||
+          (updates.status === "archived" && existingPost.publishedAt)
+        )
       ) {
         return reply.code(403).send({
-          message: "Only admins can publish or change this post status",
+          message:
+            "Only admins can publish; authors can submit drafts for review",
         });
       }
       if (
@@ -690,11 +760,15 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
       }
 
       for (const translation of translationPayloads) {
-        const language = languageResult.languageMap.get(translation.languageCode);
+        const language = languageResult.languageMap.get(
+          translation.languageCode,
+        );
         if (!language) {
           return reply
             .code(400)
-            .send({ message: `Language ${translation.languageCode} not found` });
+            .send({
+              message: `Language ${translation.languageCode} not found`,
+            });
         }
 
         const existingSlug = await app.db.query.postTranslations.findFirst({
@@ -729,7 +803,9 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         ...(updates.status === "published" && !existingPost.publishedAt
           ? { publishedAt: new Date() }
           : {}),
-        ...(updates.status === "draft" || updates.status === "archived"
+        ...(updates.status === "draft" ||
+        updates.status === "pending_review" ||
+        updates.status === "archived"
           ? { publishedAt: null }
           : {}),
         updatedAt: new Date(),
@@ -742,7 +818,9 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         .returning(postColumns);
 
       for (const translation of translationPayloads) {
-        const language = languageResult.languageMap.get(translation.languageCode);
+        const language = languageResult.languageMap.get(
+          translation.languageCode,
+        );
         if (!language) {
           continue;
         }
@@ -782,7 +860,8 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         item: {
           ...updatedPost,
           ...(primaryTranslation ?? {}),
-          languageCode: primaryTranslation?.languageCode ?? defaultLanguage.code,
+          languageCode:
+            primaryTranslation?.languageCode ?? defaultLanguage.code,
         },
       });
     },

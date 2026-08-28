@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, BookOpen, Clock3, Search, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PostVisual } from "../components/PostVisual";
 import { useI18n } from "../i18n/I18nContext";
@@ -29,6 +29,7 @@ export const HomePage = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: getCategoriesRequest,
@@ -38,10 +39,13 @@ export const HomePage = () => {
     "all",
     ...categoryItems.map((category) => category.code),
   ];
-  const categoryLabel = (category: string) =>
-    copy.home.categories[category as keyof typeof copy.home.categories] ??
-    categoryItems.find((item) => item.code === category)?.nativeName ??
-    category;
+  const categoryLabel = useCallback(
+    (category: string) =>
+      copy.home.categories[category as keyof typeof copy.home.categories] ??
+      categoryItems.find((item) => item.code === category)?.nativeName ??
+      category,
+    [categoryItems, copy.home.categories],
+  );
 
   const postsQuery = useQuery({
     queryKey: ["posts", "home", language, page, query],
@@ -62,29 +66,17 @@ export const HomePage = () => {
     const apiPosts = postsQuery.data?.items ?? [];
 
     return apiPosts.map((post: PostItem) => ({
-          id: post.id,
-          title: post.title,
-          slug: post.slug,
-          category: post.category,
-          excerpt: post.excerpt,
-          image: post.imageUrl ?? "",
-          author: post.authorName ?? `user#${post.authorId}`,
-          date: dateFormatter.format(
-            new Date(post.publishedAt ?? post.createdAt),
-          ),
-          readTime: post.readTime,
-        }));
+      id: post.id,
+      title: post.title,
+      slug: post.slug,
+      category: post.category,
+      excerpt: post.excerpt,
+      image: post.imageUrl ?? "",
+      author: post.authorName ?? `user#${post.authorId}`,
+      date: dateFormatter.format(new Date(post.publishedAt ?? post.createdAt)),
+      readTime: post.readTime,
+    }));
   }, [dateFormatter, postsQuery.data?.items]);
-
-  if (postsQuery.isLoading) {
-    return <p className="empty-state">{copy.home.latest}...</p>;
-  }
-
-  const featuredPost = posts[0];
-
-  if (!featuredPost) {
-    return <p className="empty-state">{copy.home.offlineFallback}</p>;
-  }
 
   const filteredPosts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -100,7 +92,17 @@ export const HomePage = () => {
 
       return matchesCategory && matchesQuery;
     });
-  }, [activeCategory, categoryItems, copy.home.categories, posts, query]);
+  }, [activeCategory, categoryLabel, posts, query]);
+
+  if (postsQuery.isLoading) {
+    return <p className="empty-state">{copy.home.latest}...</p>;
+  }
+
+  const featuredPost = posts[0];
+
+  if (!featuredPost) {
+    return <p className="empty-state">{copy.home.offlineFallback}</p>;
+  }
 
   const latestPosts = filteredPosts.filter(
     (post) => post.id !== featuredPost.id,

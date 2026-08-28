@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { AdminPostPreviewPage } from "../pages/AdminPostPreviewPage";
 import { AdminPostsPage } from "../pages/AdminPostsPage";
 import { AdminSettingsPage } from "../pages/AdminSettingsPage";
+import { AuthorCreatePostPage } from "../pages/AuthorCreatePostPage";
 import { AuthorPostsPage } from "../pages/AuthorPostsPage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
@@ -24,10 +26,33 @@ export const AppRouter = () => {
           }
         />
         <Route
+          path="/admin/posts/:id/preview"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminPostPreviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/settings"
           element={
             <ProtectedRoute allowedRoles={["admin"]}>
               <AdminSettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/author/posts/:id/preview"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "author"]}>
+              <AdminPostPreviewPage />
+            </ProtectedRoute>
+          }
+        />        <Route
+          path="/author/posts/new"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "author"]}>
+              <AuthorCreatePostPage />
             </ProtectedRoute>
           }
         />

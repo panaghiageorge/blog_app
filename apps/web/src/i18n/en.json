@@ -24,11 +24,7 @@
   "home": {
     "categoryLabel": "Post categories",
     "kicker": "Independent publishing, calmly done",
-    "headline": [
-      "Ideas for",
-      "people who",
-      "write online."
-    ],
+    "headline": ["Ideas for", "people who", "write online."],
     "intro": "A public reading room with practical essays about design, product thinking, publishing workflows, and the craft behind thoughtful blogs.",
     "leadAction": "Start with the lead story",
     "browseAction": "Browse all posts",
@@ -160,7 +156,8 @@
     "statusOptions": {
       "draft": "Draft",
       "published": "Published",
-      "archived": "Archived"
+      "archived": "Archived",
+      "pending_review": "Pending review"
     },
     "placeholders": {
       "title": "Post title",
@@ -205,7 +202,18 @@
       "published": "Published",
       "drafts": "Drafts",
       "archived": "Archived"
-    }
+    },
+    "pendingEyebrow": "Approval",
+    "pendingTitle": "Drafts awaiting review",
+    "pendingCountLabel": "pending",
+    "approve": "Approve publication",
+    "approving": "Publishing...",
+    "reject": "Reject",
+    "rejecting": "Rejecting...",
+    "noPending": "No drafts are waiting for approval.",
+    "preview": "Preview",
+    "backToApproval": "Back to approval",
+    "previewNotice": "Admin preview: this is how the post will look after publication."
   },
   "authorStudio": {
     "eyebrow": "Author",
@@ -223,6 +231,11 @@
     "noPosts": "No posts for this author yet.",
     "loading": "Loading posts...",
     "edit": "Edit",
+    "preview": "Preview",
+    "backToPosts": "Back to my posts",
+    "previewNotice": "Author preview: this is how the post will look on the public page.",
+    "submitReview": "Submit for review",
+    "submittingReview": "Submitting...",
     "delete": "Delete",
     "latestNone": "None",
     "bylineFallback": "user",
@@ -289,6 +302,10 @@
     "title": "The title must contain at least 3 characters.",
     "slug": "The slug must contain at least 3 characters and use only lowercase letters, numbers, and hyphens.",
     "excerpt": "The excerpt must contain at least 20 characters.",
+    "excerptMax": "The excerpt must contain at most 320 characters.",
+    "metaTitleMax": "The meta title must contain at most 180 characters.",
+    "metaDescriptionMax": "The meta description must contain at most 320 characters.",
+    "keywordsMax": "Keywords must contain at most 500 characters.",
     "content": "The content must contain at least 10 characters.",
     "readTime": "Choose a reading time.",
     "language": "Complete all required fields for this language.",

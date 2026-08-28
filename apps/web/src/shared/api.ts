@@ -2,8 +2,23 @@ export const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://127.0.0.1:3001";
 
 type ApiError = {
+  code?: string;
+  error?: string;
   message?: string;
 };
+
+const validationMessages = {
+  ro: "Verifică datele introduse înainte de trimitere.",
+  en: "Check the entered values before submitting.",
+} as const;
+
+const getCurrentLanguage = () =>
+  localStorage.getItem("language") === "en" ? "en" : "ro";
+
+const isTechnicalValidationError = (payload: ApiError) =>
+  payload.code?.startsWith("FST_ERR_") ||
+  payload.message?.includes("body/") ||
+  payload.message?.includes(" must ");
 
 export const getAuthToken = () => localStorage.getItem("auth_token");
 export const setAuthToken = (token: string) =>
@@ -14,7 +29,9 @@ const parseError = async (response: Response): Promise<never> => {
   let message = `Request failed (${response.status})`;
   try {
     const payload = (await response.json()) as ApiError;
-    if (payload.message) {
+    if (isTechnicalValidationError(payload)) {
+      message = validationMessages[getCurrentLanguage()];
+    } else if (payload.message) {
       message = payload.message;
     }
   } catch {
@@ -30,7 +47,9 @@ export const apiRequest = async <T>(
 ): Promise<T> => {
   const token = getAuthToken();
   const headers = new Headers(init?.headers);
-  headers.set("Content-Type", "application/json");
+  if (init?.body) {
+    headers.set("Content-Type", "application/json");
+  }
 
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);

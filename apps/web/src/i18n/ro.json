@@ -24,11 +24,7 @@
   "home": {
     "categoryLabel": "Categorii postări",
     "kicker": "Publicare independentă, făcută calm",
-    "headline": [
-      "Idei pentru",
-      "oameni care",
-      "scriu online."
-    ],
+    "headline": ["Idei pentru", "oameni care", "scriu online."],
     "intro": "O sală de lectură publică, cu eseuri practice despre design, produs, fluxuri editoriale și meșteșugul din spatele blogurilor gândite cu grijă.",
     "leadAction": "Începe cu articolul principal",
     "browseAction": "Vezi toate postările",
@@ -160,7 +156,8 @@
     "statusOptions": {
       "draft": "Draft",
       "published": "Publicată",
-      "archived": "Arhivată"
+      "archived": "Arhivată",
+      "pending_review": "Trimisă la review"
     },
     "placeholders": {
       "title": "Titlul postării",
@@ -205,7 +202,18 @@
       "published": "Publicate",
       "drafts": "Drafturi",
       "archived": "Arhivate"
-    }
+    },
+    "pendingEyebrow": "Aprobare",
+    "pendingTitle": "Drafturi în așteptare",
+    "pendingCountLabel": "în așteptare",
+    "approve": "Acceptă publicarea",
+    "approving": "Se publică...",
+    "reject": "Respinge",
+    "rejecting": "Se respinge...",
+    "noPending": "Nu există drafturi în așteptare.",
+    "preview": "Preview",
+    "backToApproval": "Înapoi la aprobare",
+    "previewNotice": "Previzualizare admin: așa va arăta postarea după publicare."
   },
   "authorStudio": {
     "eyebrow": "Autor",
@@ -223,6 +231,11 @@
     "noPosts": "Nu există încă postări pentru acest autor.",
     "loading": "Se încarcă postările...",
     "edit": "Editează",
+    "preview": "Preview",
+    "backToPosts": "Înapoi la postările mele",
+    "previewNotice": "Preview autor: așa va arăta postarea în pagina publică.",
+    "submitReview": "Trimite la review",
+    "submittingReview": "Se trimite...",
     "delete": "Șterge",
     "latestNone": "Niciuna",
     "bylineFallback": "utilizator",
@@ -289,6 +302,10 @@
     "title": "Titlul trebuie să aibă cel puțin 3 caractere.",
     "slug": "Slug-ul trebuie să aibă cel puțin 3 caractere și doar litere mici, cifre și liniuțe.",
     "excerpt": "Rezumatul trebuie să aibă cel puțin 20 de caractere.",
+    "excerptMax": "Rezumatul trebuie să aibă cel mult 320 de caractere.",
+    "metaTitleMax": "Meta title trebuie să aibă cel mult 180 de caractere.",
+    "metaDescriptionMax": "Meta description trebuie să aibă cel mult 320 de caractere.",
+    "keywordsMax": "Cuvintele-cheie trebuie să aibă cel mult 500 de caractere.",
     "content": "Conținutul trebuie să aibă cel puțin 10 caractere.",
     "readTime": "Alege timpul de citire.",
     "language": "Completează toate câmpurile obligatorii pentru această limbă.",

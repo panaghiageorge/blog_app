@@ -53,7 +53,12 @@ export const registerBody = {
   properties: {
     email: { type: "string", format: "email", maxLength: 255 },
     name: { type: "string", minLength: 2, maxLength: 120 },
-    password: { type: "string", minLength: 8, maxLength: 128, format: "password" },
+    password: {
+      type: "string",
+      minLength: 8,
+      maxLength: 128,
+      format: "password",
+    },
   },
 };
 
@@ -95,11 +100,21 @@ const translationBody = {
   required: ["languageCode", "title", "slug", "content"],
   additionalProperties: false,
   properties: {
-    languageCode: { type: "string", minLength: 2, maxLength: 12, default: "ro" },
+    languageCode: {
+      type: "string",
+      minLength: 2,
+      maxLength: 12,
+      default: "ro",
+    },
     metaTitle: { type: "string", maxLength: 180 },
     metaDescription: { type: "string", maxLength: 320 },
     keywords: { type: "string", maxLength: 500 },
-    title: { type: "string", minLength: 3, maxLength: 180, default: "O postare de test" },
+    title: {
+      type: "string",
+      minLength: 3,
+      maxLength: 180,
+      default: "O postare de test",
+    },
     slug: {
       type: "string",
       minLength: 3,
@@ -124,7 +139,12 @@ const translationBody = {
 
 const postProperties = {
   imageUrl: { type: "string", format: "uri", maxLength: 2048 },
-  title: { type: "string", minLength: 3, maxLength: 180, default: "O postare de test" },
+  title: {
+    type: "string",
+    minLength: 3,
+    maxLength: 180,
+    default: "O postare de test",
+  },
   slug: {
     type: "string",
     minLength: 3,
@@ -145,7 +165,7 @@ const postProperties = {
   },
   status: {
     type: "string",
-    enum: ["draft", "published", "archived"],
+    enum: ["draft", "pending_review", "published", "archived"],
     default: "draft",
   },
   readTime: { type: "string", minLength: 3, maxLength: 40, default: "3 min" },

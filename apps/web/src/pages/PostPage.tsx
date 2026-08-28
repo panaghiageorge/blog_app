@@ -177,7 +177,9 @@ export const PostPage = () => {
       <header className="post-hero">
         <div className="post-hero-copy">
           <span className="eyebrow">
-            {copy.home.categories[post.category as keyof typeof copy.home.categories] ?? post.category}
+            {copy.home.categories[
+              post.category as keyof typeof copy.home.categories
+            ] ?? post.category}
           </span>
           <h1>{post.title}</h1>
           <p>{post.excerpt}</p>

@@ -33,7 +33,12 @@ export const createCategoryInputSchema = z.object({
   name: z.string().trim().min(2).max(80),
   nativeName: z.string().trim().min(2).max(80),
 });
-export const postStatusSchema = z.enum(["draft", "published", "archived"]);
+export const postStatusSchema = z.enum([
+  "draft",
+  "pending_review",
+  "published",
+  "archived",
+]);
 export const languageCodeSchema = z
   .string()
   .trim()
@@ -73,30 +78,32 @@ export const updateUserInputSchema = z.object({
   role: userRoleSchema.optional(),
 });
 
-export const createPostInputSchema = z.object({
-  imageUrl: z.string().url().max(2048).optional(),
-  title: z.string().min(3).max(180).optional(),
-  slug: z
-    .string()
-    .trim()
-    .min(3)
-    .max(200)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-    .optional(),
-  excerpt: z.string().trim().min(20).max(320).optional(),
-  category: postCategorySchema.default("publishing"),
-  status: postStatusSchema.default("draft"),
-  readTime: z.string().trim().min(3).max(40).optional(),
-  content: z.string().min(10).optional(),
-  translations: z.array(postTranslationInputSchema).min(1).optional(),
-}).refine(
-  (payload) =>
-    Boolean(payload.translations?.length) ||
-    Boolean(payload.title && payload.slug && payload.content),
-  {
-    message: "Provide at least one translation or legacy title/slug/content",
-  },
-);
+export const createPostInputSchema = z
+  .object({
+    imageUrl: z.string().url().max(2048).optional(),
+    title: z.string().min(3).max(180).optional(),
+    slug: z
+      .string()
+      .trim()
+      .min(3)
+      .max(200)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .optional(),
+    excerpt: z.string().trim().min(20).max(320).optional(),
+    category: postCategorySchema.default("publishing"),
+    status: postStatusSchema.default("draft"),
+    readTime: z.string().trim().min(3).max(40).optional(),
+    content: z.string().min(10).optional(),
+    translations: z.array(postTranslationInputSchema).min(1).optional(),
+  })
+  .refine(
+    (payload) =>
+      Boolean(payload.translations?.length) ||
+      Boolean(payload.title && payload.slug && payload.content),
+    {
+      message: "Provide at least one translation or legacy title/slug/content",
+    },
+  );
 
 export const updatePostInputSchema = z.object({
   imageUrl: z.string().url().max(2048).nullable().optional(),

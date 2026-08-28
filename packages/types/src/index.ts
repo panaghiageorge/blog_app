@@ -44,7 +44,7 @@ export type PostDto = {
   slug: string;
   excerpt: string;
   category: "design" | "publishing" | "essays" | "product";
-  status: "draft" | "published" | "archived";
+  status: "draft" | "pending_review" | "published" | "archived";
   readTime: string;
   content: string;
   publishedAt: string | Date | null;

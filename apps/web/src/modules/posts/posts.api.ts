@@ -68,7 +68,13 @@ export const updatePostRequest = (id: number, payload: Partial<PostPayload>) =>
     body: JSON.stringify(payload),
   });
 
+export const publishPostRequest = (id: number) =>
+  apiRequest<{ item: PostItem }>(`/api/posts/${id}/publish`, {
+    method: "POST",
+  });
+
 export const deletePostRequest = (id: number) =>
   apiRequest<{ item: PostItem }>(`/api/posts/${id}`, {
     method: "DELETE",
   });
+
