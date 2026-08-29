@@ -10,14 +10,28 @@ export const paginationQuerySchema = z.object({
   ),
 });
 
+const strongPasswordSchema = z
+  .string()
+  .min(8)
+  .max(128)
+  .regex(/[a-z]/)
+  .regex(/[A-Z]/)
+  .regex(/[0-9]/)
+  .regex(/[^A-Za-z0-9]/);
+
 export const registerInputSchema = z.object({
-  email: z.string().email().max(255),
-  name: z.string().trim().min(2).max(120),
-  password: z.string().min(8).max(128),
+  email: z.string().trim().toLowerCase().email().max(255),
+  name: z
+    .string()
+    .trim()
+    .min(2)
+    .max(80)
+    .regex(/^[\p{L}0-9 .'-]+$/u),
+  password: strongPasswordSchema,
 });
 
 export const loginInputSchema = z.object({
-  email: z.string().email().max(255),
+  email: z.string().trim().toLowerCase().email().max(255),
   password: z.string().min(8).max(128),
 });
 
@@ -74,7 +88,7 @@ export const createUserInputSchema = registerInputSchema.extend({
 
 export const updateUserInputSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
-  email: z.string().email().max(255).optional(),
+  email: z.string().trim().toLowerCase().email().max(255).optional(),
   role: userRoleSchema.optional(),
 });
 

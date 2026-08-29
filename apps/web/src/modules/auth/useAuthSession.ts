@@ -1,54 +1,47 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { clearAuthToken, getAuthToken, setAuthToken } from "../../shared/api";
-import { meRequest } from "./auth.api";
+import { logoutRequest, meRequest } from "./auth.api";
 import type { User } from "./auth.types";
 
 export const useAuthSession = () => {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => getAuthToken());
+  const [user, setUser] = useState<User | null>(null);
 
   const meQuery = useQuery({
-    queryKey: ["me", token],
+    queryKey: ["me"],
     queryFn: meRequest,
-    enabled: Boolean(token),
     retry: false,
   });
 
   useEffect(() => {
-    if (meQuery.isError && token) {
-      clearAuthToken();
-      setToken(null);
-    }
-  }, [meQuery.isError, token]);
-
-  const user: User | null = meQuery.data?.user ?? null;
-  const isAuthenticated = Boolean(token && user);
+    setUser(meQuery.data?.user ?? null);
+  }, [meQuery.data?.user]);
 
   const login = useCallback(
-    (nextToken: string) => {
-      setAuthToken(nextToken);
-      setToken(nextToken);
+    (nextUser: User) => {
+      setUser(nextUser);
       queryClient.invalidateQueries({ queryKey: ["me"] });
     },
     [queryClient],
   );
 
-  const logout = useCallback(() => {
-    clearAuthToken();
-    setToken(null);
-    queryClient.removeQueries({ queryKey: ["me"] });
+  const logout = useCallback(async () => {
+    try {
+      await logoutRequest();
+    } finally {
+      setUser(null);
+      queryClient.removeQueries({ queryKey: ["me"] });
+    }
   }, [queryClient]);
 
   return useMemo(
     () => ({
-      token,
       user,
-      isAuthenticated,
+      isAuthenticated: Boolean(user),
       isLoading: meQuery.isLoading,
       login,
       logout,
     }),
-    [token, user, isAuthenticated, meQuery.isLoading, login, logout],
+    [user, meQuery.isLoading, login, logout],
   );
 };

@@ -11,8 +11,25 @@ export type User = {
 };
 
 export type AuthResponse = {
-  token: string;
   user: User;
+};
+
+export type RegisterResponse = {
+  ok: true;
+  email: string;
+};
+
+export type VerifyEmailResponse = {
+  ok: true;
+};
+
+export type ForgotPasswordResponse = {
+  ok: true;
+  email: string;
+};
+
+export type ResetPasswordResponse = {
+  ok: true;
 };
 
 export type MeResponse = {

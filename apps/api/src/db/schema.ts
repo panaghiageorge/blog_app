@@ -25,11 +25,46 @@ export const users = pgTable("users", {
   name: varchar("name", { length: 120 }).notNull(),
   role: userRole("role").notNull().default("author"),
   passwordHash: text("password_hash").notNull(),
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
 });
 
+export const emailVerificationTokens = pgTable(
+  "email_verification_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [uniqueIndex("email_verification_tokens_user_unique").on(table.userId)],
+);
+
+
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [uniqueIndex("password_reset_tokens_user_unique").on(table.userId)],
+);
 export const languages = pgTable("languages", {
   id: serial("id").primaryKey(),
   code: varchar("code", { length: 12 }).notNull().unique(),
@@ -115,6 +150,32 @@ export const postTranslations = pgTable(
   ],
 );
 
+export const usersRelations = relations(users, ({ many }) => ({
+  posts: many(posts),
+  emailVerificationTokens: many(emailVerificationTokens),
+  passwordResetTokens: many(passwordResetTokens),
+}));
+
+export const emailVerificationTokensRelations = relations(
+  emailVerificationTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [emailVerificationTokens.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+
+export const passwordResetTokensRelations = relations(
+  passwordResetTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [passwordResetTokens.userId],
+      references: [users.id],
+    }),
+  }),
+);
 export const postsRelations = relations(posts, ({ many, one }) => ({
   category: one(categories, {
     fields: [posts.categoryId],

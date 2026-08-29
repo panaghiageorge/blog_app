@@ -5,9 +5,11 @@ import { AdminPostsPage } from "../pages/AdminPostsPage";
 import { AdminSettingsPage } from "../pages/AdminSettingsPage";
 import { AuthorCreatePostPage } from "../pages/AuthorCreatePostPage";
 import { AuthorPostsPage } from "../pages/AuthorPostsPage";
+import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { HomePage } from "../pages/HomePage";
 import { LoginPage } from "../pages/LoginPage";
 import { PostPage } from "../pages/PostPage";
+import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { AppLayout } from "./AppLayout";
 
 export const AppRouter = () => {
@@ -17,6 +19,8 @@ export const AppRouter = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/posts/:slug" element={<PostPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route
           path="/admin/posts"
           element={
@@ -48,7 +52,8 @@ export const AppRouter = () => {
               <AdminPostPreviewPage />
             </ProtectedRoute>
           }
-        />        <Route
+        />
+        <Route
           path="/author/posts/new"
           element={
             <ProtectedRoute allowedRoles={["admin", "author"]}>
