@@ -67,7 +67,17 @@ const getClientIp = (request: { ip: string; headers: { [key: string]: string | s
 
 const attemptKey = (email: string, ip: string) => email + ":" + ip;
 
+const pruneAttempts = (store: Map<string, SecurityAttempt>, windowMs: number) => {
+  const now = Date.now();
+  for (const [key, attempt] of store.entries()) {
+    const lockExpired = !attempt.lockedUntil || attempt.lockedUntil <= now;
+    const windowExpired = now - attempt.firstAttemptAt > windowMs;
+    if (lockExpired && windowExpired) store.delete(key);
+  }
+};
+
 const isLocked = (store: Map<string, SecurityAttempt>, key: string) => {
+  pruneAttempts(store, otpWindowMs);
   const attempt = store.get(key);
   return Boolean(attempt?.lockedUntil && attempt.lockedUntil > Date.now());
 };
@@ -86,6 +96,7 @@ const recordFailure = (store: Map<string, SecurityAttempt>, key: string) => {
 };
 
 const isLoginLocked = (key: string) => {
+  pruneAttempts(failedLoginAttempts, loginWindowMs);
   const attempt = failedLoginAttempts.get(key);
   return Boolean(attempt?.lockedUntil && attempt.lockedUntil > Date.now());
 };
@@ -229,6 +240,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     "/verify-email",
     { config: { rateLimit: { max: 8, timeWindow: "15 minutes" } } },
     async (request, reply) => {
+      pruneAttempts(otpVerificationAttempts, otpWindowMs);
       const parsed = verifyEmailBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(400).send({ message: "Invalid verification code" });
@@ -284,9 +296,15 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     "/forgot-password",
     { config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } },
     async (request, reply) => {
+      pruneAttempts(passwordResetAttempts, otpWindowMs);
       const parsed = forgotPasswordBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(400).send({ message: "Invalid email" });
+      }
+
+      const key = attemptKey(parsed.data.email, getClientIp(request));
+      if (isLocked(passwordResetAttempts, key)) {
+        return reply.code(429).send({ message: "Too many reset attempts" });
       }
 
       const user = await app.db.query.users.findFirst({
@@ -306,6 +324,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     "/reset-password",
     { config: { rateLimit: { max: 8, timeWindow: "15 minutes" } } },
     async (request, reply) => {
+      pruneAttempts(passwordResetAttempts, otpWindowMs);
       const parsed = resetPasswordBodySchema.safeParse(request.body);
       if (!parsed.success) {
         return reply.code(400).send({ message: "Invalid reset payload" });
@@ -366,6 +385,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       schema: { tags: ["Auth"], summary: "Login", body: loginBody },
     },
     async (request, reply) => {
+      pruneAttempts(failedLoginAttempts, loginWindowMs);
       const parsed = loginInputSchema.safeParse(request.body);
       if (!parsed.success) {
         return reply
@@ -412,6 +432,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           id: user.id,
           email: user.email,
           name: user.name,
+          avatarUrl: user.avatarUrl,
           role: user.role,
           createdAt: user.createdAt,
         },
@@ -446,6 +467,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
           id: true,
           email: true,
           name: true,
+          avatarUrl: true,
           role: true,
           createdAt: true,
         },

@@ -1,20 +1,29 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   ArrowUpRight,
   Bookmark,
   Clock3,
+  Eye,
   Link as LinkIcon,
+  Tag,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { PostVisual } from "../components/PostVisual";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { PostCarousel } from "../components/PostCarousel";
 import { useI18n } from "../i18n/I18nContext";
+import { useAuth } from "../modules/auth/AuthContext";
 import {
   getPostBySlugRequest,
   getPostsRequest,
+  getSavedPostStatusRequest,
+  savePostRequest,
+  trackPostViewRequest,
+  unsavePostRequest,
 } from "../modules/posts/posts.api";
 import type { PostItem } from "../modules/posts/posts.types";
+import { mediaUrl } from "../shared/media";
+import { useDocumentMeta } from "../shared/useDocumentMeta";
 
 type PostView = {
   id: number;
@@ -24,17 +33,25 @@ type PostView = {
   excerpt: string;
   readTime: string;
   imageUrl?: string | null;
+  galleryImages?: string[];
   metaTitle?: string | null;
   metaDescription?: string | null;
   keywords?: string | null;
   author: string;
   date: string;
+  publishedAt: string;
+  viewCount: number;
+  lastViewedAt?: string | null;
   content: string;
+  tags: string[];
 };
 
 export const PostPage = () => {
   const { slug } = useParams();
   const { copy, language } = useI18n();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
   const postQuery = useQuery({
@@ -46,6 +63,37 @@ export const PostPage = () => {
   const relatedQuery = useQuery({
     queryKey: ["posts", "related", language],
     queryFn: () => getPostsRequest(1, 6, "", language),
+  });
+  const savedStatusQuery = useQuery({
+    queryKey: ["posts", "saved-status", postQuery.data?.item?.id],
+    queryFn: () => getSavedPostStatusRequest(postQuery.data!.item.id),
+    enabled: isAuthenticated && Boolean(postQuery.data?.item?.id),
+  });
+  const saveMutation = useMutation({
+    mutationFn: (shouldSave: boolean) =>
+      shouldSave ? savePostRequest(post!.id) : unsavePostRequest(post!.id),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["posts", "saved-status", post?.id], data);
+      queryClient.invalidateQueries({ queryKey: ["posts", "saved"] });
+    },
+  });
+  const viewMutation = useMutation({
+    mutationFn: trackPostViewRequest,
+    onSuccess: (data) => {
+      queryClient.setQueryData<typeof postQuery.data>(
+        ["posts", "slug", slug, language],
+        (current) =>
+          current
+            ? {
+                item: {
+                  ...current.item,
+                  viewCount: data.item.viewCount,
+                  lastViewedAt: data.item.lastViewedAt,
+                },
+              }
+            : current,
+      );
+    },
   });
 
   const dateFormatter = useMemo(
@@ -70,6 +118,7 @@ export const PostPage = () => {
         excerpt: apiPost.excerpt,
         readTime: apiPost.readTime,
         imageUrl: apiPost.imageUrl,
+        galleryImages: apiPost.galleryImages ?? [],
         metaTitle: apiPost.metaTitle,
         metaDescription: apiPost.metaDescription,
         keywords: apiPost.keywords,
@@ -77,7 +126,11 @@ export const PostPage = () => {
         date: dateFormatter.format(
           new Date(apiPost.publishedAt ?? apiPost.createdAt),
         ),
+        publishedAt: apiPost.publishedAt ?? apiPost.createdAt,
+        viewCount: apiPost.viewCount ?? 0,
+        lastViewedAt: apiPost.lastViewedAt,
         content: apiPost.content,
+        tags: apiPost.tags?.map((tag) => tag.name) ?? [],
       };
     }
 
@@ -92,13 +145,22 @@ export const PostPage = () => {
     const apiRelatedPosts = relatedQuery.data?.items;
 
     if (apiRelatedPosts?.length) {
+      const currentTags = new Set(post.tags.map((tag) => tag.toLowerCase()));
       return apiRelatedPosts
         .filter((postCopy) => postCopy.id !== post.id)
+        .map((postCopy) => {
+          const matchingTags = postCopy.tags?.filter((tag) => currentTags.has(tag.name.toLowerCase())).length ?? 0;
+          const categoryScore = postCopy.category === post.category ? 1 : 0;
+          return { postCopy, score: matchingTags * 2 + categoryScore };
+        })
+        .sort((first, second) => second.score - first.score)
         .slice(0, 3)
-        .map((postCopy) => ({
+        .map(({ postCopy }) => ({
           id: postCopy.id,
           slug: postCopy.slug,
           title: postCopy.title,
+          category: postCopy.category,
+          readTime: postCopy.readTime,
         }));
     }
 
@@ -111,26 +173,43 @@ export const PostPage = () => {
   );
 
   useEffect(() => {
-    if (post) {
-      document.title = post.metaTitle || `${post.title} | ${copy.brand.name}`;
-      const updateMeta = (name: string, content: string) => {
-        let element = document.head.querySelector<HTMLMetaElement>(
-          `meta[name="${name}"]`,
-        );
-        if (!element) {
-          element = document.createElement("meta");
-          element.name = name;
-          document.head.appendChild(element);
-        }
-        element.content = content;
-      };
+    if (!post?.id) return;
 
-      updateMeta("description", post.metaDescription || post.excerpt);
-      if (post.keywords) {
-        updateMeta("keywords", post.keywords);
-      }
-    }
-  }, [copy.brand.name, post]);
+    const storageKey = `post-viewed:${post.id}`;
+    const lastTrackedAt = Number(window.sessionStorage.getItem(storageKey) ?? 0);
+    const thirtyMinutes = 30 * 60 * 1000;
+    if (Date.now() - lastTrackedAt < thirtyMinutes) return;
+
+    window.sessionStorage.setItem(storageKey, String(Date.now()));
+    viewMutation.mutate(post.id);
+  }, [post?.id]);
+
+  useDocumentMeta({
+    title: post ? post.metaTitle || `${post.title} | ${copy.brand.name}` : copy.metaTitle,
+    description: post ? post.metaDescription || post.excerpt : copy.home.intro,
+    keywords: post?.keywords,
+    image: post?.imageUrl ? mediaUrl(post.imageUrl) : undefined,
+    canonicalPath: post ? `/posts/${post.slug}` : undefined,
+    publishedTime: post?.publishedAt,
+    author: post?.author,
+    tags: post?.tags,
+    jsonLd: post
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: post.title,
+          description: post.metaDescription || post.excerpt,
+          datePublished: post.publishedAt,
+          author: { "@type": "Person", name: post.author },
+          keywords: post.tags,
+          image: post.imageUrl
+            ? new URL(mediaUrl(post.imageUrl), window.location.origin).toString()
+            : undefined,
+          mainEntityOfPage: new URL("/posts/" + post.slug, window.location.origin).toString(),
+        }
+      : undefined,
+    type: "article",
+  });
 
   if (!post && postQuery.isLoading) {
     return (
@@ -158,6 +237,17 @@ export const PostPage = () => {
       </section>
     );
   }
+
+  const isSaved = Boolean(savedStatusQuery.data?.isSaved);
+
+  const handleSavePost = () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    saveMutation.mutate(!isSaved);
+  };
 
   const handleCopyLink = async () => {
     if (navigator.clipboard) {
@@ -192,11 +282,30 @@ export const PostPage = () => {
               <Clock3 size={16} />
               {post.readTime}
             </span>
+            <span>
+              <Eye size={16} />
+              {post.viewCount.toLocaleString(language === "ro" ? "ro-RO" : "en-US")} {copy.postPage.views}
+            </span>
           </div>
+          {post.tags.length > 0 && (
+            <div className="post-tag-list" aria-label={copy.postPage.tagsTitle}>
+              {post.tags.map((tag) => (
+                <span key={tag}>
+                  <Tag size={14} />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="post-actions">
-            <button className="secondary" type="button">
+            <button
+              className={isSaved ? "secondary saved-action active" : "secondary saved-action"}
+              disabled={saveMutation.isPending}
+              onClick={handleSavePost}
+              type="button"
+            >
               <Bookmark size={17} />
-              {copy.postPage.saved}
+              {isSaved ? copy.postPage.savedActive : copy.postPage.saved}
             </button>
             <button
               className="secondary"
@@ -208,19 +317,29 @@ export const PostPage = () => {
             </button>
           </div>
         </div>
-        <PostVisual
+        <PostCarousel
           category={post.category}
-          imageUrl={post.imageUrl}
-          size="hero"
+          images={[post.imageUrl, ...(post.galleryImages ?? [])]}
         />
       </header>
 
       <div className="post-body-layout">
         <div className="post-content">
           <p className="post-lede">{post.excerpt}</p>
-          {contentBlocks.map((paragraph, index) => (
-            <p key={`${post.id}-${index}`}>{paragraph}</p>
-          ))}
+          {contentBlocks.map((block, index) => {
+            const imageMatch = block.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+            if (imageMatch) {
+              const [, alt, src] = imageMatch;
+              return (
+                <figure className="post-content-image" key={`${post.id}-${index}`}>
+                  <img src={mediaUrl(src)} alt={alt} />
+                  {alt && <figcaption>{alt}</figcaption>}
+                </figure>
+              );
+            }
+
+            return <p key={`${post.id}-${index}`}>{block}</p>;
+          })}
         </div>
 
         <aside className="post-aside">
@@ -230,13 +349,14 @@ export const PostPage = () => {
             <p>{copy.postPage.authorBio}</p>
           </section>
 
-          <section className="popular-panel">
+          <section className="popular-panel related-panel">
             <span className="eyebrow">{copy.postPage.relatedTitle}</span>
             <div className="popular-list">
               {relatedPosts.map((relatedPost, index) => (
                 <Link key={relatedPost.id} to={`/posts/${relatedPost.slug}`}>
                   <strong>{String(index + 1).padStart(2, "0")}</strong>
                   <span>{relatedPost.title}</span>
+                  <small>{relatedPost.readTime}</small>
                 </Link>
               ))}
             </div>

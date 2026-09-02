@@ -1,17 +1,28 @@
-import { Moon, Sun } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Bookmark, LogOut, Moon, Settings, Sun } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useI18n } from "../i18n/I18nContext";
 import { type Language, languageLabels } from "../i18n/translations";
 import { useAuth } from "../modules/auth/AuthContext";
+import { hasPermission } from "../shared/authorization";
+import { mediaUrl } from "../shared/media";
 
 type Theme = "light" | "dark";
 
 const languages: Language[] = ["ro", "en"];
 
+const initialsFor = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "U";
+
 export const AppLayout = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { copy, language, setLanguage } = useI18n();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => {
     const themeParam = new URLSearchParams(window.location.search).get("theme");
     if (themeParam === "dark") {
@@ -33,6 +44,7 @@ export const AppLayout = () => {
 
   const themeLabel =
     theme === "light" ? copy.theme.switchToDark : copy.theme.switchToLight;
+  const userInitials = useMemo(() => initialsFor(user?.name ?? ""), [user?.name]);
 
   return (
     <main className="app-shell">
@@ -63,33 +75,45 @@ export const AppLayout = () => {
           >
             {copy.nav.home}
           </NavLink>
-          <NavLink
-            to="/author/posts"
-            className={({ isActive }) =>
-              isActive ? "nav-link active" : "nav-link"
-            }
-          >
-            {copy.nav.studio}
-          </NavLink>
-          {user?.role === "admin" && (
-            <>
-              <NavLink
-                to="/admin/settings"
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
-              >
-                {copy.nav.settings}
-              </NavLink>
-              <NavLink
-                to="/admin/posts"
-                className={({ isActive }) =>
-                  isActive ? "nav-link active" : "nav-link"
-                }
-              >
-                {copy.nav.allPosts}
-              </NavLink>
-            </>
+          {hasPermission(user?.role, "manage_posts") && (
+            <NavLink
+              to="/author/posts"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              {copy.nav.studio}
+            </NavLink>
+          )}
+          {hasPermission(user?.role, "save_posts") && (
+            <NavLink
+              to="/saved-posts"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              {copy.nav.savedPosts}
+            </NavLink>
+          )}
+          {hasPermission(user?.role, "manage_taxonomy") && (
+            <NavLink
+              to="/admin/settings"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              {copy.nav.settings}
+            </NavLink>
+          )}
+          {hasPermission(user?.role, "publish_posts") && (
+            <NavLink
+              to="/admin/posts"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              {copy.nav.allPosts}
+            </NavLink>
           )}
         </nav>
 
@@ -122,10 +146,48 @@ export const AppLayout = () => {
           >
             {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
           </button>
-          {isAuthenticated ? (
-            <button type="button" className="secondary" onClick={logout}>
-              {copy.nav.logout}
-            </button>
+          {isAuthenticated && user ? (
+            <div className="profile-menu">
+              <button
+                type="button"
+                className="profile-trigger"
+                onClick={() => setProfileOpen((current) => !current)}
+                aria-label={copy.account.openMenu}
+                aria-expanded={profileOpen}
+              >
+                {user.avatarUrl ? (
+                  <img src={mediaUrl(user.avatarUrl)} alt="" />
+                ) : (
+                  <span>{userInitials}</span>
+                )}
+              </button>
+              {profileOpen && (
+                <div className="profile-dropdown">
+                  <div className="profile-dropdown-header">
+                    <strong>{user.name}</strong>
+                    <small>{user.email}</small>
+                  </div>
+                  <NavLink to="/account" onClick={() => setProfileOpen(false)}>
+                    <Settings size={16} />
+                    {copy.nav.account}
+                  </NavLink>
+                  <NavLink to="/saved-posts" onClick={() => setProfileOpen(false)}>
+                    <Bookmark size={16} />
+                    {copy.nav.savedPosts}
+                  </NavLink>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      logout();
+                    }}
+                  >
+                    <LogOut size={16} />
+                    {copy.nav.logout}
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <NavLink className="login-link" to="/login">
               {copy.nav.login}

@@ -7,13 +7,16 @@ import {
   updatePostInputSchema,
   type PostTranslationInput,
 } from "@blog/validation";
-import { and, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyPluginAsync } from "fastify";
 import {
   categories,
   languages,
+  postTags,
   posts,
+  savedPosts,
   postTranslations,
+  tags,
   users,
 } from "../../db/schema.js";
 import {
@@ -32,9 +35,12 @@ const postColumns = {
   id: posts.id,
   authorId: posts.authorId,
   imageUrl: posts.imageUrl,
+  galleryImages: posts.galleryImages,
   categoryId: posts.categoryId,
   category: posts.category,
   status: posts.status,
+  viewCount: posts.viewCount,
+  lastViewedAt: posts.lastViewedAt,
   publishedAt: posts.publishedAt,
   updatedAt: posts.updatedAt,
   createdAt: posts.createdAt,
@@ -53,6 +59,9 @@ const translatedPostColumns = {
   metaDescription: postTranslations.metaDescription,
   keywords: postTranslations.keywords,
 };
+
+const escapeLikePattern = (value: string) => value.replace(/[\\%_]/g, (match) => `\\${match}`);
+
 
 const createExcerpt = (content: string) => {
   const normalized = content.replace(/\s+/g, " ").trim();
@@ -177,6 +186,53 @@ const getTranslationLanguageIds = async (
   return { languageMap };
 };
 
+
+const getPostTagsByPostIds = async (app: FastifyInstance, postIds: number[]) => {
+  if (postIds.length === 0) {
+    return new Map<number, unknown[]>();
+  }
+
+  const rows = await app.db
+    .select({
+      postId: postTags.postId,
+      id: tags.id,
+      code: tags.code,
+      name: tags.name,
+    })
+    .from(postTags)
+    .innerJoin(tags, eq(postTags.tagId, tags.id))
+    .where(and(inArray(postTags.postId, postIds), eq(tags.isActive, true)));
+
+  const grouped = new Map<number, typeof rows>();
+  for (const row of rows) {
+    grouped.set(row.postId, [...(grouped.get(row.postId) ?? []), row]);
+  }
+
+  return grouped;
+};
+
+const replacePostTags = async (
+  app: FastifyInstance,
+  postId: number,
+  tagIds: number[],
+) => {
+  await app.db.delete(postTags).where(eq(postTags.postId, postId));
+  const uniqueTagIds = [...new Set(tagIds)];
+  if (uniqueTagIds.length === 0) return;
+
+  const activeTags = await app.db.query.tags.findMany({
+    where: and(inArray(tags.id, uniqueTagIds), eq(tags.isActive, true)),
+    columns: { id: true },
+  });
+  if (activeTags.length !== uniqueTagIds.length) {
+    throw new Error('Invalid tags');
+  }
+
+  await app.db.insert(postTags).values(
+    uniqueTagIds.map((tagId) => ({ postId, tagId })),
+  );
+};
+
 const getPostTranslationsByPostIds = async (
   app: FastifyInstance,
   postIds: number[],
@@ -244,9 +300,9 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
       const languageCondition = eq(postTranslations.languageId, language.id);
       const searchCondition = search
         ? or(
-            ilike(postTranslations.title, `%${search}%`),
-            ilike(postTranslations.excerpt, `%${search}%`),
-            ilike(postTranslations.content, `%${search}%`),
+            ilike(postTranslations.title, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.excerpt, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.content, `%${escapeLikePattern(search)}%`),
           )
         : undefined;
       const whereCondition = and(
@@ -273,10 +329,14 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         .where(whereCondition);
 
       const [items, totalResult] = await Promise.all([itemsQuery, countQuery]);
+      const postTagMap = await getPostTagsByPostIds(app, items.map((item) => item.id));
 
       const total = Number(totalResult[0]?.total ?? 0);
       return reply.send({
-        items: items.map(withFallbackExcerpt),
+        items: items.map((item) => ({
+          ...withFallbackExcerpt(item),
+          tags: postTagMap.get(item.id) ?? [],
+        })),
         pagination: {
           page,
           pageSize,
@@ -290,7 +350,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/manage",
     {
-      preHandler: [app.authenticate],
+      preHandler: [app.authenticate, app.authorize("manage_posts")],
       schema: {
         tags: ["Posts"],
         summary: "List posts available to the current user",
@@ -323,9 +383,9 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
       const languageCondition = eq(postTranslations.languageId, language.id);
       const searchCondition = search
         ? or(
-            ilike(postTranslations.title, `%${search}%`),
-            ilike(postTranslations.excerpt, `%${search}%`),
-            ilike(postTranslations.content, `%${search}%`),
+            ilike(postTranslations.title, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.excerpt, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.content, `%${escapeLikePattern(search)}%`),
           )
         : undefined;
       const ownershipCondition =
@@ -360,12 +420,14 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         app,
         items.map((item) => item.id),
       );
+      const postTagMap = await getPostTagsByPostIds(app, items.map((item) => item.id));
 
       const total = Number(totalResult[0]?.total ?? 0);
       return reply.send({
         items: items.map((item) => ({
           ...withFallbackExcerpt(item),
           translations: translations.get(item.id) ?? [],
+          tags: postTagMap.get(item.id) ?? [],
         })),
         pagination: {
           page,
@@ -444,7 +506,168 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Post not found" });
       }
 
-      return reply.send({ item: withFallbackExcerpt(post) });
+      return reply.send({
+        item: {
+          ...withFallbackExcerpt(post),
+          tags: (await getPostTagsByPostIds(app, [post.id])).get(post.id) ?? [],
+        },
+      });
+    },
+  );
+
+  app.get(
+    "/saved",
+    {
+      preHandler: [app.authenticate, app.authorize("save_posts")],
+      schema: {
+        tags: ["Posts"],
+        summary: "List saved posts for the current user",
+        security: bearerSecurity,
+        querystring: postsQuery,
+      },
+    },
+    async (request, reply) => {
+      const parsed = paginationQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        return reply
+          .code(400)
+          .send({ message: "Invalid query", issues: parsed.error.flatten() });
+      }
+
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) {
+        return reply.code(401).send({ message: "Unauthorized" });
+      }
+
+      const language = await getRequestedLanguage(app, request.query);
+      if (!language) {
+        return reply
+          .code(500)
+          .send({ message: "No active language configured" });
+      }
+
+      const { page, pageSize, search } = parsed.data;
+      const searchCondition = search
+        ? or(
+            ilike(postTranslations.title, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.excerpt, `%${escapeLikePattern(search)}%`),
+            ilike(postTranslations.content, `%${escapeLikePattern(search)}%`),
+          )
+        : undefined;
+      const whereCondition = and(
+        eq(savedPosts.userId, currentUserId),
+        eq(posts.status, "published"),
+        eq(postTranslations.languageId, language.id),
+        searchCondition,
+      );
+
+      const itemsQuery = app.db
+        .select(translatedPostColumns)
+        .from(savedPosts)
+        .innerJoin(posts, eq(savedPosts.postId, posts.id))
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .innerJoin(languages, eq(postTranslations.languageId, languages.id))
+        .where(whereCondition)
+        .orderBy(desc(savedPosts.createdAt))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+
+      const countQuery = app.db
+        .select({ total: count() })
+        .from(savedPosts)
+        .innerJoin(posts, eq(savedPosts.postId, posts.id))
+        .innerJoin(postTranslations, eq(postTranslations.postId, posts.id))
+        .where(whereCondition);
+
+      const [items, totalResult] = await Promise.all([itemsQuery, countQuery]);
+      const postTagMap = await getPostTagsByPostIds(app, items.map((item) => item.id));
+
+      const total = Number(totalResult[0]?.total ?? 0);
+      return reply.send({
+        items: items.map((item) => ({
+          ...withFallbackExcerpt(item),
+          isSaved: true,
+          tags: postTagMap.get(item.id) ?? [],
+        })),
+        pagination: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        },
+      });
+    },
+  );
+
+  app.get(
+    "/:id/saved",
+    {
+      preHandler: [app.authenticate, app.authorize("save_posts")],
+      schema: { tags: ["Posts"], summary: "Check saved post status", security: bearerSecurity, params: idParams },
+    },
+    async (request, reply) => {
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) return reply.code(400).send({ message: "Invalid post id" });
+
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) return reply.code(401).send({ message: "Unauthorized" });
+
+      const saved = await app.db.query.savedPosts.findFirst({
+        where: and(eq(savedPosts.userId, currentUserId), eq(savedPosts.postId, parsed.data.id)),
+        columns: { postId: true },
+      });
+
+      return reply.send({ isSaved: Boolean(saved) });
+    },
+  );
+
+  app.post(
+    "/:id/save",
+    {
+      preHandler: [app.authenticate, app.authorize("save_posts")],
+      schema: { tags: ["Posts"], summary: "Save a post for later", security: bearerSecurity, params: idParams },
+    },
+    async (request, reply) => {
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) return reply.code(400).send({ message: "Invalid post id" });
+
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) return reply.code(401).send({ message: "Unauthorized" });
+
+      const post = await app.db.query.posts.findFirst({
+        where: and(eq(posts.id, parsed.data.id), eq(posts.status, "published")),
+        columns: { id: true },
+      });
+      if (!post) return reply.code(404).send({ message: "Post not found" });
+
+      await app.db
+        .insert(savedPosts)
+        .values({ userId: currentUserId, postId: parsed.data.id })
+        .onConflictDoNothing();
+
+      return reply.send({ isSaved: true });
+    },
+  );
+
+  app.delete(
+    "/:id/save",
+    {
+      preHandler: [app.authenticate, app.authorize("save_posts")],
+      schema: { tags: ["Posts"], summary: "Remove a saved post", security: bearerSecurity, params: idParams },
+    },
+    async (request, reply) => {
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) return reply.code(400).send({ message: "Invalid post id" });
+
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) return reply.code(401).send({ message: "Unauthorized" });
+
+      await app.db
+        .delete(savedPosts)
+        .where(and(eq(savedPosts.userId, currentUserId), eq(savedPosts.postId, parsed.data.id)));
+
+      return reply.send({ isSaved: false });
     },
   );
 
@@ -490,14 +713,56 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(404).send({ message: "Post not found" });
       }
 
-      return reply.send({ item: withFallbackExcerpt(post) });
+      return reply.send({
+        item: {
+          ...withFallbackExcerpt(post),
+          tags: (await getPostTagsByPostIds(app, [post.id])).get(post.id) ?? [],
+        },
+      });
+    },
+  );
+
+  app.post(
+    "/:id/view",
+    {
+      config: { rateLimit: { max: 30, timeWindow: "1 minute" } },
+      schema: {
+        tags: ["Posts"],
+        summary: "Track a post view",
+        params: idParams,
+      },
+    },
+    async (request, reply) => {
+      const parsed = idParamSchema.safeParse(request.params);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: "Invalid post id" });
+      }
+
+      const [updatedPost] = await app.db
+        .update(posts)
+        .set({
+          viewCount: sql`${posts.viewCount} + 1`,
+          lastViewedAt: new Date(),
+        })
+        .where(and(eq(posts.id, parsed.data.id), eq(posts.status, "published")))
+        .returning({
+          id: posts.id,
+          viewCount: posts.viewCount,
+          lastViewedAt: posts.lastViewedAt,
+        });
+
+      if (!updatedPost) {
+        return reply.code(404).send({ message: "Post not found" });
+      }
+
+      return reply.send({ item: updatedPost });
     },
   );
 
   app.post(
     "/",
     {
-      preHandler: [app.authenticate],
+      preHandler: [app.authenticate, app.authorize("create_posts")],
       schema: {
         tags: ["Posts"],
         summary: "Create a post",
@@ -587,9 +852,12 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
           publishedAt: null,
           authorId: currentUserId,
           imageUrl: parsed.data.imageUrl,
+          galleryImages: parsed.data.galleryImages ?? [],
           categoryId: category.id,
         })
         .returning(postColumns);
+
+      await replacePostTags(app, createdPost.id, parsed.data.tagIds ?? []);
 
       await app.db.insert(postTranslations).values(
         translationPayloads.map((translation) => {
@@ -617,6 +885,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
           ...createdPost,
           ...primaryTranslation,
           languageCode: primaryTranslation.languageCode,
+          tags: (await getPostTagsByPostIds(app, [createdPost.id])).get(createdPost.id) ?? [],
         },
       });
     },
@@ -625,7 +894,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     "/:id/publish",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("publish_posts")],
       schema: {
         tags: ["Posts"],
         summary: "Publish a post",
@@ -664,7 +933,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
   app.patch(
     "/:id",
     {
-      preHandler: [app.authenticate],
+      preHandler: [app.authenticate, app.authorize("manage_posts")],
       schema: {
         tags: ["Posts"],
         summary: "Update a post",
@@ -784,9 +1053,20 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
+      if (updates.tagIds) {
+        try {
+          await replacePostTags(app, parsedId.data.id, updates.tagIds);
+        } catch {
+          return reply.code(400).send({ message: "Invalid tags" });
+        }
+      }
+
       const nextUpdates = {
         ...(updates.imageUrl !== undefined
           ? { imageUrl: updates.imageUrl }
+          : {}),
+        ...(updates.galleryImages !== undefined
+          ? { galleryImages: updates.galleryImages }
           : {}),
         ...(updates.category ? { category: updates.category } : {}),
         ...(updatedCategory ? { categoryId: updatedCategory.id } : {}),
@@ -862,6 +1142,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
           ...(primaryTranslation ?? {}),
           languageCode:
             primaryTranslation?.languageCode ?? defaultLanguage.code,
+          tags: (await getPostTagsByPostIds(app, [updatedPost.id])).get(updatedPost.id) ?? [],
         },
       });
     },
@@ -870,7 +1151,7 @@ export const postRoutes: FastifyPluginAsync = async (app) => {
   app.delete(
     "/:id",
     {
-      preHandler: [app.authenticate],
+      preHandler: [app.authenticate, app.authorize("manage_posts")],
       schema: {
         tags: ["Posts"],
         summary: "Delete a post",

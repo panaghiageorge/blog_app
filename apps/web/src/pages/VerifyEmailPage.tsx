@@ -1,9 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, KeyRound, Mail, ShieldCheck } from "lucide-react";
+import { KeyRound, Mail, ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { AuthResult } from "../components/AuthResult";
 import { useI18n } from "../i18n/I18nContext";
 import { verifyEmailRequest } from "../modules/auth/auth.api";
+import { useDocumentMeta } from "../shared/useDocumentMeta";
 
 export const VerifyEmailPage = () => {
   const { copy } = useI18n();
@@ -20,21 +22,26 @@ export const VerifyEmailPage = () => {
     verifyMutation.mutate();
   };
 
+  useDocumentMeta({
+    title: `${copy.auth.emailVerificationTitle} | ${copy.brand.name}`,
+    description: copy.auth.emailVerificationIntro,
+    canonicalPath: "/verify-email",
+  });
+
   return (
     <section className="auth-center-page">
       <div className="auth-card-modern verify-card">
         {verifyMutation.isSuccess ? (
-          <div className="verify-success-state">
-            <div className="verify-success-icon" aria-hidden="true">
-              <CheckCircle2 size={34} />
-            </div>
-            <p className="eyebrow">{copy.auth.emailVerificationEyebrow}</p>
-            <h2>{copy.auth.emailVerificationSuccessTitle}</h2>
-            <p>{copy.auth.emailVerificationSuccessBody}</p>
-            <Link className="auth-submit verify-success-action" to="/login">
-              {copy.auth.submitLogin}
-            </Link>
-          </div>
+          <AuthResult
+            eyebrow={copy.auth.emailVerificationEyebrow}
+            title={copy.auth.emailVerificationSuccessTitle}
+            body={copy.auth.emailVerificationSuccessBody}
+            action={
+              <Link className="auth-submit verify-success-action" to="/login">
+                {copy.auth.submitLogin}
+              </Link>
+            }
+          />
         ) : (
           <>
             <div className="auth-card-header">

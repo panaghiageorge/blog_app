@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Eye, PenLine } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useI18n } from "../i18n/I18nContext";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -14,6 +14,7 @@ import type { PostItem, PostPayload } from "../modules/posts/posts.types";
 
 const toDraft = (post: PostItem): PostPayload => ({
   imageUrl: post.imageUrl,
+  galleryImages: post.galleryImages ?? [],
   category: post.category,
   status: post.status,
   translations: post.translations ?? [
@@ -37,6 +38,9 @@ export const AuthorPostsPage = () => {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draft, setDraft] = useState<PostPayload | null>(null);
+  const [autosaveStatus, setAutosaveStatus] = useState("");
+  const autosaveTimeoutRef = useRef<number | null>(null);
+  const skipNextAutosaveRef = useRef(false);
   const dateFormatter = useMemo(
     () =>
       new Intl.DateTimeFormat(language === "ro" ? "ro-RO" : "en", {
@@ -58,8 +62,20 @@ export const AuthorPostsPage = () => {
     onSuccess: () => {
       setEditingId(null);
       setDraft(null);
+      setAutosaveStatus("");
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
+  });
+
+  const autosaveMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: PostPayload }) =>
+      updatePostRequest(id, payload),
+    onMutate: () => setAutosaveStatus(copy.postForm.autosaveSaving),
+    onSuccess: () => {
+      setAutosaveStatus(copy.postForm.autosaveSaved);
+      queryClient.invalidateQueries({ queryKey: ["posts"] });
+    },
+    onError: () => setAutosaveStatus(copy.postForm.autosaveError),
   });
 
   const submitReviewMutation = useMutation({
@@ -101,9 +117,35 @@ export const AuthorPostsPage = () => {
   ).length;
 
   const startEditing = (post: PostItem) => {
+    skipNextAutosaveRef.current = true;
     setEditingId(post.id);
     setDraft(toDraft(post));
+    setAutosaveStatus(copy.postForm.autosaveIdle);
   };
+
+  const scheduleAutosave = useCallback(
+    (nextDraft: PostPayload) => {
+      setDraft(nextDraft);
+      if (!editingId) return;
+      if (skipNextAutosaveRef.current) {
+        skipNextAutosaveRef.current = false;
+        return;
+      }
+      if (autosaveTimeoutRef.current) window.clearTimeout(autosaveTimeoutRef.current);
+      setAutosaveStatus(copy.postForm.autosavePending);
+      autosaveTimeoutRef.current = window.setTimeout(() => {
+        autosaveMutation.mutate({ id: editingId, payload: nextDraft });
+      }, 1200);
+    },
+    [autosaveMutation, copy.postForm.autosavePending, editingId],
+  );
+
+  useEffect(
+    () => () => {
+      if (autosaveTimeoutRef.current) window.clearTimeout(autosaveTimeoutRef.current);
+    },
+    [],
+  );
 
   const submitEdit = (payload: PostPayload) => {
     if (!editingId || !draft) return;
@@ -164,9 +206,14 @@ export const AuthorPostsPage = () => {
                     initialValue={draft}
                     isPending={updateMutation.isPending}
                     onCancel={() => {
+                      if (autosaveTimeoutRef.current) window.clearTimeout(autosaveTimeoutRef.current);
                       setEditingId(null);
                       setDraft(null);
+                      setAutosaveStatus("");
                     }}
+                    onDraftChange={scheduleAutosave}
+                    autosaveStatus={autosaveStatus}
+                    warnOnUnsavedChanges
                     onSubmit={submitEdit}
                     pendingLabel={copy.postForm.saving}
                     submitLabel={copy.postForm.save}

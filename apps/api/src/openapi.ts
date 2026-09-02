@@ -91,6 +91,7 @@ export const updateUserBody = {
   properties: {
     email: { type: "string", format: "email", maxLength: 255 },
     name: { type: "string", minLength: 2, maxLength: 120 },
+    avatarUrl: { type: "string", format: "uri", maxLength: 2048, nullable: true },
     role: { type: "string", enum: ["admin", "author"] },
   },
 };
@@ -139,6 +140,12 @@ const translationBody = {
 
 const postProperties = {
   imageUrl: { type: "string", format: "uri", maxLength: 2048 },
+  galleryImages: {
+    type: "array",
+    maxItems: 5,
+    items: { type: "string", format: "uri", maxLength: 2048 },
+    default: [],
+  },
   title: {
     type: "string",
     minLength: 3,
@@ -200,3 +207,23 @@ export const createPostBody = {
 export const updatePostBody = createPostBody;
 
 export const bearerSecurity = [{ bearerAuth: [] }];
+
+
+export const updateAccountBody = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    name: { type: "string", minLength: 2, maxLength: 120 },
+    avatarUrl: { type: "string", format: "uri", maxLength: 2048, nullable: true },
+  },
+};
+
+export const changePasswordBody = {
+  type: "object",
+  required: ["currentPassword", "newPassword"],
+  additionalProperties: false,
+  properties: {
+    currentPassword: { type: "string", minLength: 8, maxLength: 128, format: "password" },
+    newPassword: { type: "string", minLength: 8, maxLength: 128, format: "password" },
+  },
+};

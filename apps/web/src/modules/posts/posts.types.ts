@@ -17,6 +17,14 @@ export type CategoryItem = {
   createdAt: string;
 };
 
+export type TagItem = {
+  id: number;
+  code: string;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
 export type PostTranslationItem = {
   id?: number;
   postId?: number;
@@ -39,6 +47,7 @@ export type PostItem = {
   authorId: number;
   authorName?: string;
   imageUrl?: string | null;
+  galleryImages?: string[];
   metaTitle?: string | null;
   metaDescription?: string | null;
   keywords?: string | null;
@@ -51,15 +60,21 @@ export type PostItem = {
   readTime: string;
   content: string;
   publishedAt: string | null;
+  viewCount: number;
+  lastViewedAt?: string | null;
   updatedAt: string;
   createdAt: string;
   translations?: PostTranslationItem[];
+  tags?: TagItem[];
+  isSaved?: boolean;
 };
 
 export type PostPayload = {
   imageUrl?: string | null;
+  galleryImages?: string[];
   category?: PostItem["category"];
   status?: PostItem["status"];
+  tagIds?: number[];
   translations: PostTranslationItem[];
 };
 

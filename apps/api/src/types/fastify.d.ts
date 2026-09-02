@@ -1,6 +1,7 @@
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { Pool } from "pg";
+import type { Permission, UserRole } from "../modules/auth/authorization.js";
 import type * as schema from "../db/schema.js";
 
 declare module "fastify" {
@@ -12,6 +13,14 @@ declare module "fastify" {
       reply: FastifyReply,
     ) => Promise<void>;
     requireAdmin: (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
+    requireRole: (roles: UserRole[]) => (
+      request: FastifyRequest,
+      reply: FastifyReply,
+    ) => Promise<void>;
+    authorize: (permission: Permission) => (
       request: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>;

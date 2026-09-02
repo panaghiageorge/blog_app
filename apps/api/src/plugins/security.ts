@@ -3,10 +3,11 @@ import helmet from "@fastify/helmet";
 import fastifyJwt from "@fastify/jwt";
 import rateLimit from "@fastify/rate-limit";
 import { eq } from "drizzle-orm";
-import type { FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import { env } from "../config/env.js";
 import { users } from "../db/schema.js";
+import { hasPermission, type Permission, type UserRole } from "../modules/auth/authorization.js";
 import { getCurrentUserId } from "../modules/auth/current-user.js";
 
 const allowedOrigins = env.CORS_ORIGIN.split(",")
@@ -20,6 +21,21 @@ const getCookie = (cookieHeader: string | undefined, name: string) => {
   const cookie = cookies.find((item) => item.trim().startsWith(`${name}=`));
   return cookie ? decodeURIComponent(cookie.trim().slice(name.length + 1)) : null;
 };
+
+
+const getFreshUserRole = async (app: FastifyInstanceLike, request: FastifyRequest) => {
+  const userId = getCurrentUserId(request);
+  if (!userId) return undefined;
+
+  const user = await app.db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { role: true },
+  });
+
+  return user?.role as UserRole | undefined;
+};
+
+type FastifyInstanceLike = FastifyInstance;
 
 const isAllowedRequestOrigin = (request: FastifyRequest) => {
   const origin = request.headers.origin;
@@ -83,21 +99,31 @@ export const securityPlugin = fp(async (app) => {
   );
 
   app.decorate(
-    "requireAdmin",
-    async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getCurrentUserId(request);
-      if (!userId) {
-        return reply.code(401).send({ message: "Unauthorized" });
-      }
+    "requireRole",
+    (roles: UserRole[]) => async (request: FastifyRequest, reply: FastifyReply) => {
+      const role = await getFreshUserRole(app, request);
+      if (!role) return reply.code(401).send({ message: "Unauthorized" });
+      if (!roles.includes(role)) return reply.code(403).send({ message: "Forbidden" });
+    },
+  );
 
-      const user = await app.db.query.users.findFirst({
-        where: eq(users.id, userId),
-        columns: { role: true },
-      });
-
-      if (user?.role !== "admin") {
+  app.decorate(
+    "authorize",
+    (permission: Permission) => async (request: FastifyRequest, reply: FastifyReply) => {
+      const role = await getFreshUserRole(app, request);
+      if (!role) return reply.code(401).send({ message: "Unauthorized" });
+      if (!hasPermission(role, permission)) {
         return reply.code(403).send({ message: "Forbidden" });
       }
+    },
+  );
+
+  app.decorate(
+    "requireAdmin",
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const role = await getFreshUserRole(app, request);
+      if (!role) return reply.code(401).send({ message: "Unauthorized" });
+      if (role !== "admin") return reply.code(403).send({ message: "Forbidden" });
     },
   );
 });

@@ -1,9 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ImagePlus, X } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { DesignMultiSelect } from "../../components/DesignMultiSelect";
+import { DesignSelect } from "../../components/DesignSelect";
 import { useI18n } from "../../i18n/I18nContext";
+import { mediaUrl } from "../../shared/media";
 import enLocale from "../../i18n/en.json";
 import roLocale from "../../i18n/ro.json";
-import { getCategoriesRequest, getLanguagesRequest } from "./posts.api";
+import { getCategoriesRequest, getLanguagesRequest, getTagsRequest, uploadPostImageRequest } from "./posts.api";
 import type {
   LanguageItem,
   PostPayload,
@@ -13,11 +17,15 @@ import type {
 type Props = {
   onSubmit: (payload: PostPayload) => Promise<unknown> | unknown;
   isPending?: boolean;
-  initialValue?: PostPayload;
+  initialValue?: PostPayload & { tags?: { id: number }[] };
   submitLabel?: string;
   pendingLabel?: string;
   onCancel?: () => void;
   isAdmin?: boolean;
+  onDraftChange?: (payload: PostPayload) => void;
+  autosaveStatus?: string;
+  warnOnUnsavedChanges?: boolean;
+  isNewPost?: boolean;
 };
 
 const createSlug = (value: string) =>
@@ -111,6 +119,10 @@ export const CreatePostForm = ({
   pendingLabel,
   onCancel,
   isAdmin = false,
+  onDraftChange,
+  autosaveStatus,
+  warnOnUnsavedChanges = false,
+  isNewPost = !initialValue,
 }: Props) => {
   const { copy, language } = useI18n();
   const localeCopy = language === "ro" ? roLocale : enLocale;
@@ -122,23 +134,57 @@ export const CreatePostForm = ({
     queryKey: ["categories"],
     queryFn: getCategoriesRequest,
   });
+  const tagsQuery = useQuery({
+    queryKey: ["tags"],
+    queryFn: getTagsRequest,
+  });
+  const uploadImageMutation = useMutation({
+    mutationFn: uploadPostImageRequest,
+    onSuccess: (data) => {
+      setPayload((current) => ({ ...current, imageUrl: data.url }));
+    },
+  });
+  const galleryUploadMutation = useMutation({
+    mutationFn: uploadPostImageRequest,
+    onSuccess: (data) => {
+      setPayload((current) => ({
+        ...current,
+        galleryImages: [...(current.galleryImages ?? []), data.url].slice(0, 5),
+      }));
+    },
+  });
+  const contentImageMutation = useMutation({
+    mutationFn: uploadPostImageRequest,
+    onSuccess: (data) => {
+      if (!activeLanguage?.code) return;
+      const currentContent = activeTranslation.content.trimEnd();
+      updateTranslation(activeLanguage.code, {
+        content: `${currentContent}${currentContent ? "\n\n" : ""}![${copy.postForm.contentImageAlt}](${data.url})\n\n`,
+      });
+    },
+  });
   const languages = languagesQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
+  const tags = tagsQuery.data?.items ?? [];
   const [activeLanguageCode, setActiveLanguageCode] = useState("");
   const [payload, setPayload] = useState<PostPayload>({
     category: "design",
     status: "draft",
     imageUrl: "",
+    galleryImages: [],
     translations: [],
   });
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
     {},
   );
+  const initialPayloadRef = useRef("");
+  const didInitializeRef = useRef(false);
 
   useEffect(() => {
     if (languages.length === 0 || categories.length === 0) return;
 
-    setPayload((current) => ({
+    setPayload((current) => {
+      const nextPayload = {
       category:
         initialValue?.category ??
         (categories.some((category) => category.code === current.category)
@@ -150,11 +196,19 @@ export const CreatePostForm = ({
           ? "published"
           : "draft",
       imageUrl: initialValue?.imageUrl ?? current.imageUrl ?? "",
+      galleryImages: initialValue?.galleryImages ?? current.galleryImages ?? [],
+      tagIds: initialValue?.tagIds ?? initialValue?.tags?.map((tag) => tag.id) ?? current.tagIds ?? [],
       translations: translationsFor(
         languages,
         initialValue?.translations ?? current.translations,
       ),
-    }));
+    };
+      if (!didInitializeRef.current) {
+        initialPayloadRef.current = JSON.stringify(nextPayload);
+        didInitializeRef.current = true;
+      }
+      return nextPayload;
+    });
     setActiveLanguageCode((current) =>
       languages.some((language) => language.code === current)
         ? current
@@ -162,6 +216,26 @@ export const CreatePostForm = ({
           languages[0].code),
     );
   }, [categories, initialValue, isAdmin, languages]);
+
+  useEffect(() => {
+    if (!didInitializeRef.current) return;
+    onDraftChange?.(payload);
+  }, [onDraftChange, payload]);
+
+  const hasUnsavedChanges =
+    didInitializeRef.current && JSON.stringify(payload) !== initialPayloadRef.current;
+
+  useEffect(() => {
+    if (!warnOnUnsavedChanges || !hasUnsavedChanges) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges, warnOnUnsavedChanges]);
 
   const activeLanguage =
     languages.find((language) => language.code === activeLanguageCode) ??
@@ -171,6 +245,32 @@ export const CreatePostForm = ({
       (translation) => translation.languageCode === activeLanguage?.code,
     ) ?? emptyTranslation(activeLanguage?.code ?? "");
   const activeErrors = validationErrors[activeLanguage?.code ?? ""] ?? [];
+  const categoryOptions = categories.map((category) => ({
+    label: category.nativeName,
+    value: category.code,
+  }));
+  const readTimeSelectOptions = readTimeOptions.map((option) => ({
+    label: option,
+    value: option,
+  }));
+  const statusOptions = [
+    ...(isAdmin || !initialValue || initialValue.status === "draft"
+      ? [{ label: copy.postForm.statusOptions.draft, value: "draft" as const }]
+      : []),
+    ...(isAdmin || initialValue?.status === "draft"
+      ? [{ label: copy.postForm.statusOptions.pending_review, value: "pending_review" as const }]
+      : []),
+    ...(isAdmin || initialValue?.status === "published"
+      ? [{ label: copy.postForm.statusOptions.published, value: "published" as const }]
+      : []),
+    ...(isAdmin || initialValue?.status === "published" || initialValue?.status === "archived"
+      ? [{ label: copy.postForm.statusOptions.archived, value: "archived" as const }]
+      : []),
+  ];
+  const tagOptions = tags.map((tag) => ({ label: tag.name, value: String(tag.id) }));
+  const selectedTagValues = (payload.tagIds ?? []).map(String);
+  const galleryImages = (payload.galleryImages ?? []).slice(0, 5);
+  const canAddGalleryImage = galleryImages.length < 5;
 
   const updateTranslation = (
     languageCode: string,
@@ -199,16 +299,18 @@ export const CreatePostForm = ({
       return;
     }
 
-    await onSubmit({
+    const submittedPayload = {
       category: payload.category,
       status: isAdmin
         ? payload.status
-        : initialValue
+        : !isNewPost && initialValue
           ? payload.status !== initialValue.status
             ? payload.status
             : undefined
           : "draft",
       imageUrl: payload.imageUrl?.trim() || undefined,
+      galleryImages: (payload.galleryImages ?? []).filter(Boolean).slice(0, 5),
+      tagIds: payload.tagIds ?? [],
       translations: payload.translations.map((translation) => ({
         ...translation,
         title: translation.title.trim(),
@@ -217,20 +319,25 @@ export const CreatePostForm = ({
         readTime: translation.readTime?.trim() || undefined,
         content: translation.content.trim(),
       })),
-    });
+    };
 
-    if (!initialValue) {
+    await onSubmit(submittedPayload);
+    initialPayloadRef.current = JSON.stringify(payload);
+
+    if (isNewPost) {
       setValidationErrors({});
       setPayload({
         category: "design",
         status: "draft",
         imageUrl: "",
+        galleryImages: [],
+        tagIds: [],
         translations: translationsFor(languages),
       });
     }
   };
 
-  if (languagesQuery.isLoading || categoriesQuery.isLoading) {
+  if (languagesQuery.isLoading || categoriesQuery.isLoading || tagsQuery.isLoading) {
     return <p>{copy.authorStudio.loading}</p>;
   }
   if (languagesQuery.error instanceof Error) {
@@ -238,6 +345,9 @@ export const CreatePostForm = ({
   }
   if (categoriesQuery.error instanceof Error) {
     return <p className="error">{categoriesQuery.error.message}</p>;
+  }
+  if (tagsQuery.error instanceof Error) {
+    return <p className="error">{tagsQuery.error.message}</p>;
   }
   if (!activeLanguage || categories.length === 0) {
     return <p className="error">{copy.postForm.noActiveLanguages}</p>;
@@ -252,6 +362,9 @@ export const CreatePostForm = ({
               <p className="eyebrow">{copy.postForm.editDetails}</p>
               <h3>{copy.postForm.title}</h3>
             </div>
+            {autosaveStatus && (
+              <span className="autosave-status">{autosaveStatus}</span>
+            )}
             {initialValue && (
               <span className={`status-pill status-${payload.status}`}>
                 {copy.postForm.statusOptions[payload.status ?? "draft"]}
@@ -334,99 +447,150 @@ export const CreatePostForm = ({
           <div className="form-columns">
             <label className="field">
               <span>{copy.postForm.readTime}</span>
-              <select
-                value={activeTranslation.readTime ?? ""}
-                onChange={(event) =>
-                  updateTranslation(activeLanguage.code, {
-                    readTime: event.target.value,
-                  })
+              <DesignSelect
+                label={copy.postForm.readTime}
+                value={activeTranslation.readTime ?? "5 min"}
+                options={readTimeSelectOptions}
+                onValueChange={(value) =>
+                  updateTranslation(activeLanguage.code, { readTime: value })
                 }
-                required
-                aria-invalid={activeErrors.includes(
-                  localeCopy.postValidation.readTime,
-                )}
-              >
-                {readTimeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
           </div>
 
           <div className="form-columns">
             <label className="field">
               <span>{copy.postForm.category}</span>
-              <select
-                value={payload.category ?? "design"}
-                onChange={(event) =>
+              <DesignSelect
+                label={copy.postForm.category}
+                value={payload.category ?? categories[0]?.code ?? "design"}
+                options={categoryOptions}
+                onValueChange={(value) =>
                   setPayload({
                     ...payload,
-                    category: event.target.value as PostPayload["category"],
+                    category: value as PostPayload["category"],
                   })
                 }
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.code}>
-                    {category.nativeName}
-                  </option>
-                ))}
-              </select>
+              />
             </label>
             {initialValue && (
               <label className="field">
                 <span>{copy.postForm.status}</span>
-                <select
+                <DesignSelect
+                  label={copy.postForm.status}
                   value={payload.status ?? "draft"}
-                  disabled={!isAdmin && initialValue?.status === "published"}
-                  onChange={(event) =>
+                  options={statusOptions}
+                  onValueChange={(value) =>
                     setPayload({
                       ...payload,
-                      status: event.target.value as PostPayload["status"],
+                      status: value as PostPayload["status"],
                     })
                   }
-                >
-                  {(isAdmin ||
-                    !initialValue ||
-                    initialValue.status === "draft") && (
-                    <option value="draft">
-                      {copy.postForm.statusOptions.draft}
-                    </option>
-                  )}
-                  {(isAdmin || initialValue?.status === "draft") && (
-                    <option value="pending_review">
-                      {copy.postForm.statusOptions.pending_review}
-                    </option>
-                  )}
-                  {(isAdmin || initialValue?.status === "published") && (
-                    <option value="published">
-                      {copy.postForm.statusOptions.published}
-                    </option>
-                  )}
-                  {(isAdmin ||
-                    initialValue?.status === "published" ||
-                    initialValue?.status === "archived") && (
-                    <option value="archived">
-                      {copy.postForm.statusOptions.archived}
-                    </option>
-                  )}
-                </select>
+                />
               </label>
             )}
           </div>
 
-          <label className="field">
+          <div className="field image-upload-field">
             <span>{copy.postForm.image}</span>
-            <input
-              type="url"
-              value={payload.imageUrl ?? ""}
-              onChange={(event) =>
-                setPayload({ ...payload, imageUrl: event.target.value })
+            <div className="image-upload-control">
+              <input
+                type="url"
+                value={payload.imageUrl ?? ""}
+                onChange={(event) =>
+                  setPayload({ ...payload, imageUrl: event.target.value })
+                }
+                placeholder={copy.postForm.placeholders.image}
+              />
+              <label className="upload-button">
+                <input
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) uploadImageMutation.mutate(file);
+                    event.target.value = "";
+                  }}
+                />
+                {uploadImageMutation.isPending
+                  ? copy.postForm.uploadingImage
+                  : copy.postForm.uploadImage}
+              </label>
+            </div>
+            {uploadImageMutation.error instanceof Error && (
+              <p className="error">{copy.postForm.uploadImageError}</p>
+            )}
+            {payload.imageUrl && (
+              <div className="image-upload-preview">
+                <img src={mediaUrl(payload.imageUrl)} alt="" />
+              </div>
+            )}
+          </div>
+
+          <div className="field gallery-manager">
+            <div className="gallery-manager-header">
+              <span>{copy.postForm.galleryImages}</span>
+              <small>{copy.postForm.galleryHelp}</small>
+            </div>
+            <div className="gallery-grid">
+              {galleryImages.map((image, index) => (
+                <div className="gallery-card" key={image + index}>
+                  <img src={mediaUrl(image)} alt="" />
+                  <button
+                    type="button"
+                    className="icon-button gallery-remove"
+                    onClick={() =>
+                      setPayload((current) => ({
+                        ...current,
+                        galleryImages: (current.galleryImages ?? []).filter((_, imageIndex) => imageIndex !== index),
+                      }))
+                    }
+                    aria-label={copy.postForm.removeImage}
+                    title={copy.postForm.removeImage}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              {canAddGalleryImage && (
+                <label className="gallery-add-card">
+                  <input
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) galleryUploadMutation.mutate(file);
+                      event.target.value = "";
+                    }}
+                  />
+                  <ImagePlus size={19} />
+                  <span>{galleryUploadMutation.isPending ? copy.postForm.uploadingImage : copy.postForm.addGalleryImage}</span>
+                </label>
+              )}
+            </div>
+            {!canAddGalleryImage && <p className="field-help">{copy.postForm.galleryLimit}</p>}
+            {galleryUploadMutation.error instanceof Error && (
+              <p className="error">{copy.postForm.uploadImageError}</p>
+            )}
+          </div>
+
+          <fieldset className="meta-fields tag-picker">
+            <legend>{copy.postForm.tags}</legend>
+            <DesignMultiSelect
+              clearLabel={copy.postForm.clearTags}
+              emptyLabel={copy.postForm.allTags}
+              label={copy.postForm.tags}
+              options={tagOptions}
+              values={selectedTagValues}
+              selectedLabel={(count) => `${count} ${copy.postForm.selectedTags}`}
+              onChange={(values) =>
+                setPayload({
+                  ...payload,
+                  tagIds: values.map((value) => Number(value)),
+                })
               }
-              placeholder={copy.postForm.placeholders.image}
             />
-          </label>
+          </fieldset>
 
           <fieldset className="meta-fields">
             <legend>{copy.postForm.metaTitleSection}</legend>
@@ -490,8 +654,28 @@ export const CreatePostForm = ({
               rows={3}
             />
           </label>
-          <label className="field">
+          <div className="field">
             <span>{copy.postForm.content}</span>
+            <div className="content-image-toolbar">
+              <label className="upload-button compact-upload-button">
+                <input
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) contentImageMutation.mutate(file);
+                    event.target.value = "";
+                  }}
+                />
+                <ImagePlus size={17} />
+                {contentImageMutation.isPending
+                  ? copy.postForm.insertingContentImage
+                  : copy.postForm.insertContentImage}
+              </label>
+            </div>
+            {contentImageMutation.error instanceof Error && (
+              <p className="error">{copy.postForm.uploadImageError}</p>
+            )}
             <textarea
               value={activeTranslation.content}
               onChange={(event) =>
@@ -506,7 +690,7 @@ export const CreatePostForm = ({
               )}
               rows={10}
             />
-          </label>
+          </div>
         </div>
 
         <aside className="post-form-preview">
@@ -538,6 +722,9 @@ export const CreatePostForm = ({
             <span>
               {activeTranslation.readTime || copy.postForm.optionalReadTime}
             </span>
+            {(payload.tagIds ?? []).length > 0 && (
+              <span>{(payload.tagIds ?? []).length} {copy.postForm.tags}</span>
+            )}
           </div>
         </aside>
       </div>
@@ -557,3 +744,4 @@ export const CreatePostForm = ({
     </form>
   );
 };
+

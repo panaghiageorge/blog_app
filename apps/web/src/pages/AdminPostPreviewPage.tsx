@@ -2,13 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Clock3 } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { PostVisual } from "../components/PostVisual";
+import { PostCarousel } from "../components/PostCarousel";
 import { useI18n } from "../i18n/I18nContext";
 import { getManagePostsRequest } from "../modules/posts/posts.api";
 import type {
   PostItem,
   PostTranslationItem,
 } from "../modules/posts/posts.types";
+import { mediaUrl } from "../shared/media";
 
 const pickTranslation = (post: PostItem, language: string) => {
   const translation = post.translations?.find(
@@ -104,19 +105,29 @@ export const AdminPostPreviewPage = () => {
             </span>
           </div>
         </div>
-        <PostVisual
+        <PostCarousel
           category={post.category}
-          imageUrl={post.imageUrl}
-          size="hero"
+          images={[post.imageUrl, ...(post.galleryImages ?? [])]}
         />
       </header>
 
       <div className="post-body-layout">
         <div className="post-content">
           <p className="post-lede">{translatedPost.excerpt}</p>
-          {contentBlocks.map((paragraph, index) => (
-            <p key={`${post.id}-${index}`}>{paragraph}</p>
-          ))}
+          {contentBlocks.map((block, index) => {
+            const imageMatch = block.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+            if (imageMatch) {
+              const [, alt, src] = imageMatch;
+              return (
+                <figure className="post-content-image" key={`${post.id}-${index}`}>
+                  <img src={mediaUrl(src)} alt={alt} />
+                  {alt && <figcaption>{alt}</figcaption>}
+                </figure>
+              );
+            }
+
+            return <p key={`${post.id}-${index}`}>{block}</p>;
+          })}
         </div>
 
         <aside className="post-aside">

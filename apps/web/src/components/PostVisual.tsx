@@ -1,4 +1,5 @@
 import type { CategoryId } from "../i18n/translations";
+import { mediaUrl } from "../shared/media";
 
 export const PostVisual = ({
   category,
@@ -10,7 +11,7 @@ export const PostVisual = ({
   imageUrl?: string | null;
 }) => (
   <div className={`post-visual post-visual-${category} post-visual-${size}`}>
-    {imageUrl && <img alt="" className="post-visual-image" src={imageUrl} />}
+    {imageUrl && <img alt="" className="post-visual-image" src={mediaUrl(imageUrl)} />}
     <img
       alt=""
       aria-hidden="true"

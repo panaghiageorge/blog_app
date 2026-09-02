@@ -3,12 +3,15 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { AdminPostPreviewPage } from "../pages/AdminPostPreviewPage";
 import { AdminPostsPage } from "../pages/AdminPostsPage";
 import { AdminSettingsPage } from "../pages/AdminSettingsPage";
+import { AccountPage } from "../pages/AccountPage";
 import { AuthorCreatePostPage } from "../pages/AuthorCreatePostPage";
 import { AuthorPostsPage } from "../pages/AuthorPostsPage";
 import { ForgotPasswordPage } from "../pages/ForgotPasswordPage";
 import { HomePage } from "../pages/HomePage";
+import { LegalPage } from "../pages/LegalPage";
 import { LoginPage } from "../pages/LoginPage";
 import { PostPage } from "../pages/PostPage";
+import { SavedPostsPage } from "../pages/SavedPostsPage";
 import { VerifyEmailPage } from "../pages/VerifyEmailPage";
 import { AppLayout } from "./AppLayout";
 
@@ -21,10 +24,27 @@ export const AppRouter = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/legal/:key" element={<LegalPage />} />
+        <Route
+          path="/saved-posts"
+          element={
+            <ProtectedRoute requiredPermission="save_posts">
+              <SavedPostsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute requiredPermission="manage_account">
+              <AccountPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/admin/posts"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute requiredPermission="publish_posts">
               <AdminPostsPage />
             </ProtectedRoute>
           }
@@ -32,7 +52,7 @@ export const AppRouter = () => {
         <Route
           path="/admin/posts/:id/preview"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute requiredPermission="publish_posts">
               <AdminPostPreviewPage />
             </ProtectedRoute>
           }
@@ -40,7 +60,7 @@ export const AppRouter = () => {
         <Route
           path="/admin/settings"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute requiredPermission="manage_taxonomy">
               <AdminSettingsPage />
             </ProtectedRoute>
           }
@@ -56,7 +76,7 @@ export const AppRouter = () => {
         <Route
           path="/author/posts/new"
           element={
-            <ProtectedRoute allowedRoles={["admin", "author"]}>
+            <ProtectedRoute requiredPermission="create_posts">
               <AuthorCreatePostPage />
             </ProtectedRoute>
           }
@@ -64,7 +84,7 @@ export const AppRouter = () => {
         <Route
           path="/author/posts"
           element={
-            <ProtectedRoute allowedRoles={["admin", "author"]}>
+            <ProtectedRoute requiredPermission="manage_posts">
               <AuthorPostsPage />
             </ProtectedRoute>
           }

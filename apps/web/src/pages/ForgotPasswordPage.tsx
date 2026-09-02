@@ -1,9 +1,11 @@
 import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, KeyRound, LockKeyhole, Mail, ShieldCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { AuthResult } from "../components/AuthResult";
 import { useI18n } from "../i18n/I18nContext";
 import { forgotPasswordRequest, resetPasswordRequest } from "../modules/auth/auth.api";
+import { useDocumentMeta } from "../shared/useDocumentMeta";
 
 export const ForgotPasswordPage = () => {
   const { copy } = useI18n();
@@ -47,21 +49,26 @@ export const ForgotPasswordPage = () => {
     resetMutation.mutate();
   };
 
+  useDocumentMeta({
+    title: `${copy.auth.passwordResetTitle} | ${copy.brand.name}`,
+    description: copy.auth.passwordResetIntro,
+    canonicalPath: "/forgot-password",
+  });
+
   if (step === "success") {
     return (
       <section className="auth-center-page">
         <div className="auth-card-modern verify-card">
-          <div className="verify-success-state">
-            <div className="verify-success-icon" aria-hidden="true">
-              <CheckCircle2 size={34} />
-            </div>
-            <p className="eyebrow">{copy.auth.passwordResetEyebrow}</p>
-            <h2>{copy.auth.passwordResetSuccessTitle}</h2>
-            <p>{copy.auth.passwordResetSuccessBody}</p>
-            <Link className="auth-submit verify-success-action" to="/login">
-              {copy.auth.submitLogin}
-            </Link>
-          </div>
+          <AuthResult
+            eyebrow={copy.auth.passwordResetEyebrow}
+            title={copy.auth.passwordResetSuccessTitle}
+            body={copy.auth.passwordResetSuccessBody}
+            action={
+              <Link className="auth-submit verify-success-action" to="/login">
+                {copy.auth.submitLogin}
+              </Link>
+            }
+          />
         </div>
       </section>
     );

@@ -1,5 +1,9 @@
 import { asc, eq } from "drizzle-orm";
-import { createCategoryInputSchema } from "@blog/validation";
+import {
+  createCategoryInputSchema,
+  idParamSchema,
+  updateCategoryInputSchema,
+} from "@blog/validation";
 import type { FastifyPluginAsync } from "fastify";
 import { categories } from "../../db/schema.js";
 
@@ -16,7 +20,7 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
 
   app.post(
     "/",
-    { preHandler: [app.authenticate, app.requireAdmin] },
+    { preHandler: [app.authenticate, app.authorize("manage_taxonomy")] },
     async (request, reply) => {
       const parsed = createCategoryInputSchema.safeParse(request.body);
       if (!parsed.success) {
@@ -37,6 +41,43 @@ export const categoryRoutes: FastifyPluginAsync = async (app) => {
         .values(parsed.data)
         .returning();
       return reply.code(201).send({ item: created });
+    },
+  );
+
+  app.patch(
+    "/:id",
+    { preHandler: [app.authenticate, app.authorize("manage_taxonomy")] },
+    async (request, reply) => {
+      const parsedId = idParamSchema.safeParse(request.params);
+      const parsedBody = updateCategoryInputSchema.safeParse(request.body);
+      if (!parsedId.success || !parsedBody.success) {
+        return reply.code(400).send({ message: "Invalid payload" });
+      }
+
+      const [updated] = await app.db
+        .update(categories)
+        .set(parsedBody.data)
+        .where(eq(categories.id, parsedId.data.id))
+        .returning();
+      if (!updated) return reply.code(404).send({ message: "Category not found" });
+      return reply.send({ item: updated });
+    },
+  );
+
+  app.delete(
+    "/:id",
+    { preHandler: [app.authenticate, app.authorize("manage_taxonomy")] },
+    async (request, reply) => {
+      const parsedId = idParamSchema.safeParse(request.params);
+      if (!parsedId.success) return reply.code(400).send({ message: "Invalid category id" });
+
+      const [updated] = await app.db
+        .update(categories)
+        .set({ isActive: false })
+        .where(eq(categories.id, parsedId.data.id))
+        .returning();
+      if (!updated) return reply.code(404).send({ message: "Category not found" });
+      return reply.send({ item: updated });
     },
   );
 };

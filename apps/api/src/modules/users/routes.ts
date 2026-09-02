@@ -1,35 +1,120 @@
 import {
+  changePasswordInputSchema,
   createUserInputSchema,
   idParamSchema,
   paginationQuerySchema,
+  updateAccountInputSchema,
   updateUserInputSchema,
 } from "@blog/validation";
 import { count, desc, eq, ilike, or } from "drizzle-orm";
 import type { FastifyPluginAsync } from "fastify";
 import { users } from "../../db/schema.js";
 import { getCurrentUserId } from "../auth/current-user.js";
-import { hashPassword } from "../auth/password.js";
+import { hashPassword, verifyPassword } from "../auth/password.js";
 import {
   bearerSecurity,
   createUserBody,
   idParams,
   paginationQuery,
   updateUserBody,
+  updateAccountBody,
+  changePasswordBody,
 } from "../../openapi.js";
+
+const escapeLikePattern = (value: string) => value.replace(/[\\%_]/g, (match) => `\\${match}`);
+
 
 const userColumns = {
   id: users.id,
   email: users.email,
   name: users.name,
+  avatarUrl: users.avatarUrl,
   role: users.role,
   createdAt: users.createdAt,
 };
 
 export const userRoutes: FastifyPluginAsync = async (app) => {
+  app.patch(
+    "/me",
+    {
+      preHandler: [app.authenticate, app.authorize("manage_account")],
+      schema: {
+        tags: ["Users"],
+        summary: "Update current account",
+        security: bearerSecurity,
+        body: updateAccountBody,
+      },
+    },
+    async (request, reply) => {
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) return reply.code(401).send({ message: "Unauthorized" });
+
+      const parsed = updateAccountInputSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: "Invalid payload", issues: parsed.error.flatten() });
+      }
+
+      const updates = parsed.data;
+      if (Object.keys(updates).length === 0) {
+        return reply.code(400).send({ message: "No fields to update" });
+      }
+
+      const [updatedUser] = await app.db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, currentUserId))
+        .returning(userColumns);
+
+      if (!updatedUser) return reply.code(404).send({ message: "User not found" });
+      return reply.send({ user: updatedUser });
+    },
+  );
+
+  app.patch(
+    "/me/password",
+    {
+      preHandler: [app.authenticate, app.authorize("manage_account")],
+      config: { rateLimit: { max: 5, timeWindow: "15 minutes" } },
+      schema: {
+        tags: ["Users"],
+        summary: "Change current account password",
+        security: bearerSecurity,
+        body: changePasswordBody,
+      },
+    },
+    async (request, reply) => {
+      const currentUserId = getCurrentUserId(request);
+      if (!currentUserId) return reply.code(401).send({ message: "Unauthorized" });
+
+      const parsed = changePasswordInputSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.code(400).send({ message: "Invalid password payload", issues: parsed.error.flatten() });
+      }
+
+      const user = await app.db.query.users.findFirst({
+        where: eq(users.id, currentUserId),
+        columns: { id: true, passwordHash: true },
+      });
+      if (!user) return reply.code(404).send({ message: "User not found" });
+
+      const validPassword = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
+      if (!validPassword) {
+        return reply.code(400).send({ message: "Invalid current password" });
+      }
+
+      await app.db
+        .update(users)
+        .set({ passwordHash: await hashPassword(parsed.data.newPassword) })
+        .where(eq(users.id, currentUserId));
+
+      return reply.send({ ok: true });
+    },
+  );
+
   app.get(
     "/",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("manage_users")],
       schema: {
         tags: ["Users"],
         summary: "List users",
@@ -48,8 +133,8 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
       const { page, pageSize, search } = parsed.data;
       const whereCondition = search
         ? or(
-            ilike(users.name, `%${search}%`),
-            ilike(users.email, `%${search}%`),
+            ilike(users.name, `%${escapeLikePattern(search)}%`),
+            ilike(users.email, `%${escapeLikePattern(search)}%`),
           )
         : null;
 
@@ -92,7 +177,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   app.get(
     "/:id",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("manage_users")],
       schema: {
         tags: ["Users"],
         summary: "Get a user by ID",
@@ -128,7 +213,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   app.post(
     "/",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("manage_users")],
       schema: {
         tags: ["Users"],
         summary: "Create a user",
@@ -171,7 +256,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   app.patch(
     "/:id",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("manage_users")],
       schema: {
         tags: ["Users"],
         summary: "Update a user",
@@ -233,7 +318,7 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
   app.delete(
     "/:id",
     {
-      preHandler: [app.authenticate, app.requireAdmin],
+      preHandler: [app.authenticate, app.authorize("manage_users")],
       schema: {
         tags: ["Users"],
         summary: "Delete a user",

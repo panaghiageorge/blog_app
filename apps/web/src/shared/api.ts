@@ -43,7 +43,7 @@ export const apiRequest = async <T>(
   localStorage.removeItem("auth_token");
 
   const headers = new Headers(init?.headers);
-  if (init?.body) {
+  if (init?.body && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
 

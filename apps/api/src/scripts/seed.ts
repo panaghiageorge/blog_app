@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { env } from "../config/env.js";
@@ -7,7 +7,9 @@ import {
   categories,
   languages,
   posts,
+  postTags,
   postTranslations,
+  tags,
   users,
 } from "../db/schema.js";
 import { hashPassword } from "../modules/auth/password.js";
@@ -69,6 +71,42 @@ const seedCategories = [
   { code: "essays", name: "Essays", nativeName: "Eseuri" },
   { code: "product", name: "Product", nativeName: "Produs" },
 ];
+
+const seedTags = [
+  { code: "ux", name: "UX" },
+  { code: "design-systems", name: "Design systems" },
+  { code: "workflow", name: "Workflow" },
+  { code: "writing", name: "Writing" },
+  { code: "editorial", name: "Editorial" },
+  { code: "productivity", name: "Productivity" },
+  { code: "accessibility", name: "Accessibility" },
+  { code: "mobile", name: "Mobile" },
+  { code: "analytics", name: "Analytics" },
+  { code: "translation", name: "Translation" },
+];
+
+const postTagCodes: Record<string, string[]> = {
+  "interfete-calme-pentru-autori": ["ux", "design-systems", "accessibility"],
+  "mic-sistem-editorial": ["editorial", "workflow", "writing"],
+  "arhiva-personala": ["writing", "editorial"],
+  "frictiune-dashboard-autor": ["ux", "productivity", "workflow"],
+  "dark-mode-citibil": ["design-systems", "accessibility"],
+  "homepage-care-alege": ["editorial", "ux"],
+  "schita-imagini-pentru-articole": ["design-systems", "editorial"],
+  "arhivat-layout-uri-blog": ["writing"],
+  "fluxuri-editoriale-fara-zgomot": ["workflow", "productivity", "editorial"],
+  "ghid-pentru-arhive-explorabile": ["editorial", "writing"],
+  "design-pagina-articol-memorabila": ["design-systems", "ux", "accessibility"],
+  "editor-pregatit-pentru-traduceri": ["translation", "workflow"],
+  "cum-masuram-sanatatea-unui-blog": ["analytics", "editorial"],
+  "de-ce-titlurile-bune-au-nevoie-de-rabdare": ["writing", "editorial"],
+  "detalii-dashboard-folositor": ["ux", "productivity"],
+  "cum-pregatim-un-articol-pentru-mobil": ["mobile", "accessibility", "ux"],
+  "cand-merita-sa-pastram-un-draft": ["workflow", "writing"],
+  "metoda-pentru-postari-mai-clare": ["writing", "productivity"],
+  "imagini-fara-sa-pierdem-ideea": ["design-systems", "editorial"],
+  "ritm-sanatos-publicare-saptamanala": ["workflow", "productivity", "writing"],
+};
 
 const demoPosts = [
   {
@@ -414,7 +452,7 @@ const additionalEnglishTranslations = Object.fromEntries(
 const run = async () => {
   const pool = new Pool({ connectionString: env.DATABASE_URL });
   const db = drizzle(pool, {
-    schema: { users, posts, categories, languages, postTranslations },
+    schema: { users, posts, categories, languages, postTags, postTranslations, tags },
   });
 
   try {
@@ -510,6 +548,22 @@ const run = async () => {
       categoryMap.set(savedCategory.code, savedCategory);
     }
 
+    const tagMap = new Map<string, typeof tags.$inferSelect>();
+    for (const tag of seedTags) {
+      const [savedTag] = await db
+        .insert(tags)
+        .values(tag)
+        .onConflictDoUpdate({
+          target: tags.code,
+          set: {
+            name: tag.name,
+            isActive: true,
+          },
+        })
+        .returning();
+      tagMap.set(savedTag.code, savedTag);
+    }
+
     let createdCount = 0;
     let updatedCount = 0;
 
@@ -569,7 +623,29 @@ const run = async () => {
       const english =
         englishTranslations[post.slug] ?? additionalEnglishTranslations[post.slug];
 
+      if (postId) {
+        await db.delete(postTags).where(eq(postTags.postId, postId));
+        const assignedTags = (postTagCodes[post.slug] ?? [])
+          .map((code) => tagMap.get(code))
+          .filter((tag): tag is typeof tags.$inferSelect => Boolean(tag));
+
+        if (assignedTags.length > 0) {
+          await db
+            .insert(postTags)
+            .values(assignedTags.map((tag) => ({ postId, tagId: tag.id })))
+            .onConflictDoNothing();
+        }
+      }
+
       if (postId && roLanguage) {
+        await db
+          .delete(postTranslations)
+          .where(and(
+            eq(postTranslations.languageId, roLanguage.id),
+            eq(postTranslations.slug, post.slug),
+            ne(postTranslations.postId, postId),
+          ));
+
         await db
           .insert(postTranslations)
           .values({
@@ -599,6 +675,14 @@ const run = async () => {
       }
 
       if (postId && enLanguage && english) {
+        await db
+          .delete(postTranslations)
+          .where(and(
+            eq(postTranslations.languageId, enLanguage.id),
+            eq(postTranslations.slug, english.slug),
+            ne(postTranslations.postId, postId),
+          ));
+
         await db
           .insert(postTranslations)
           .values({

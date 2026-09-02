@@ -6,6 +6,7 @@ import { useI18n } from "../i18n/I18nContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { loginRequest, registerRequest } from "../modules/auth/auth.api";
 import type { AuthMode, AuthResponse, RegisterResponse } from "../modules/auth/auth.types";
+import { useDocumentMeta } from "../shared/useDocumentMeta";
 
 export const LoginPage = () => {
   const { copy } = useI18n();
@@ -72,6 +73,12 @@ export const LoginPage = () => {
   const canSubmit = mode === "login" || isStrongPassword;
 
   const error = mutation.error instanceof Error ? mutation.error.message : "";
+
+  useDocumentMeta({
+    title: `${mode === "login" ? copy.auth.titleLogin : copy.auth.titleRegister} | ${copy.brand.name}`,
+    description: copy.auth.intro,
+    canonicalPath: "/login",
+  });
 
   return (
     <section className="auth-center-page">

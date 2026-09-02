@@ -2,6 +2,7 @@ import { relations } from "drizzle-orm";
 import {
   boolean,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -23,6 +24,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 120 }).notNull(),
+  avatarUrl: text("avatar_url"),
   role: userRole("role").notNull().default("author"),
   passwordHash: text("password_hash").notNull(),
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
@@ -88,12 +90,23 @@ export const categories = pgTable("categories", {
     .notNull(),
 });
 
+export const tags = pgTable("tags", {
+  id: serial("id").primaryKey(),
+  code: varchar("code", { length: 40 }).notNull().unique(),
+  name: varchar("name", { length: 80 }).notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
 export const posts = pgTable("posts", {
   id: serial("id").primaryKey(),
   authorId: integer("author_id")
     .notNull()
     .references(() => users.id),
   imageUrl: text("image_url"),
+  galleryImages: jsonb("gallery_images").$type<string[]>().notNull().default([]),
   categoryId: integer("category_id")
     .notNull()
     .references(() => categories.id),
@@ -105,6 +118,8 @@ export const posts = pgTable("posts", {
   readTime: varchar("read_time", { length: 40 }).notNull().default("5 min"),
   content: text("content").notNull(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
+  viewCount: integer("view_count").notNull().default(0),
+  lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),
@@ -112,6 +127,72 @@ export const posts = pgTable("posts", {
     .defaultNow()
     .notNull(),
 });
+
+export const postTags = pgTable(
+  "post_tags",
+  {
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    tagId: integer("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("post_tags_post_tag_unique").on(table.postId, table.tagId)],
+);
+
+export const legalPages = pgTable(
+  "legal_pages",
+  {
+    id: serial("id").primaryKey(),
+    key: varchar("key", { length: 40 }).notNull(),
+    languageCode: varchar("language_code", { length: 12 }).notNull(),
+    title: varchar("title", { length: 160 }).notNull(),
+    content: text("content").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [uniqueIndex("legal_pages_key_language_unique").on(table.key, table.languageCode)],
+);
+
+export const newsletterSubscriptions = pgTable(
+  "newsletter_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    email: varchar("email", { length: 255 }).notNull().unique(),
+    languageCode: varchar("language_code", { length: 12 }).notNull().default("ro"),
+    termsAccepted: boolean("terms_accepted").notNull().default(false),
+    termsAcceptedAt: timestamp("terms_accepted_at", { withTimezone: true }),
+    marketingAccepted: boolean("marketing_accepted").notNull().default(false),
+    marketingAcceptedAt: timestamp("marketing_accepted_at", { withTimezone: true }),
+    subscribedAt: timestamp("subscribed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+);
+
+export const savedPosts = pgTable(
+  "saved_posts",
+  {
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [uniqueIndex("saved_posts_user_post_unique").on(table.userId, table.postId)],
+);
 
 export const postTranslations = pgTable(
   "post_translations",
@@ -154,6 +235,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   emailVerificationTokens: many(emailVerificationTokens),
   passwordResetTokens: many(passwordResetTokens),
+  savedPosts: many(savedPosts),
 }));
 
 export const emailVerificationTokensRelations = relations(
@@ -177,6 +259,8 @@ export const passwordResetTokensRelations = relations(
   }),
 );
 export const postsRelations = relations(posts, ({ many, one }) => ({
+  postTags: many(postTags),
+  savedPosts: many(savedPosts),
   category: one(categories, {
     fields: [posts.categoryId],
     references: [categories.id],
@@ -194,6 +278,32 @@ export const languagesRelations = relations(languages, ({ many }) => ({
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
   posts: many(posts),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  postTags: many(postTags),
+}));
+
+export const savedPostsRelations = relations(savedPosts, ({ one }) => ({
+  user: one(users, {
+    fields: [savedPosts.userId],
+    references: [users.id],
+  }),
+  post: one(posts, {
+    fields: [savedPosts.postId],
+    references: [posts.id],
+  }),
+}));
+
+export const postTagsRelations = relations(postTags, ({ one }) => ({
+  post: one(posts, {
+    fields: [postTags.postId],
+    references: [posts.id],
+  }),
+  tag: one(tags, {
+    fields: [postTags.tagId],
+    references: [tags.id],
+  }),
 }));
 
 export const postTranslationsRelations = relations(

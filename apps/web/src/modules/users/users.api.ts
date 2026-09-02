@@ -1,5 +1,5 @@
 import { apiRequest } from "../../shared/api";
-import type { UserRole } from "../auth/auth.types";
+import type { User, UserRole } from "../auth/auth.types";
 import type { UserItem, UsersResponse } from "./users.types";
 
 export const getUsersRequest = (
@@ -17,9 +17,25 @@ export const getUsersRequest = (
 
 export const updateUserRequest = (
   id: number,
-  payload: { name?: string; email?: string; role?: UserRole },
+  payload: { name?: string; email?: string; avatarUrl?: string | null; role?: UserRole },
 ) =>
   apiRequest<{ item: UserItem }>(`/api/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+
+export const updateAccountRequest = (payload: { name?: string; avatarUrl?: string | null }) =>
+  apiRequest<{ user: User }>("/api/users/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+export const changeAccountPasswordRequest = (payload: {
+  currentPassword: string;
+  newPassword: string;
+}) =>
+  apiRequest<{ ok: true }>("/api/users/me/password", {
     method: "PATCH",
     body: JSON.stringify(payload),
   });

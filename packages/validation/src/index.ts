@@ -1,16 +1,76 @@
 import { z } from "zod";
 
+const controlCharacters = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const htmlTagPattern = /<[^>]*>/g;
+
+const sanitizePlainText = (value: string) =>
+  value
+    .normalize("NFC")
+    .replace(controlCharacters, "")
+    .replace(htmlTagPattern, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const sanitizeLongText = (value: string) =>
+  value
+    .normalize("NFC")
+    .replace(controlCharacters, "")
+    .replace(htmlTagPattern, "")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+
+const sanitizeCodeText = (value: string) =>
+  value
+    .normalize("NFC")
+    .replace(controlCharacters, "")
+    .trim()
+    .toLowerCase();
+
+const plainText = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? sanitizePlainText(value) : value),
+    z.string().min(min).max(max),
+  );
+
+const optionalPlainText = (max: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? sanitizePlainText(value) : value),
+    z.string().max(max).optional(),
+  );
+
+const longText = (min: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? sanitizeLongText(value) : value),
+    z.string().min(min),
+  );
+
+const codeText = (min: number, max: number, pattern: RegExp) =>
+  z.preprocess(
+    (value) => (typeof value === "string" ? sanitizeCodeText(value) : value),
+    z.string().min(min).max(max).regex(pattern),
+  );
+
+const safeMediaUrlSchema = z.union([
+  z.string().url().max(2048),
+  z.string().max(2048).regex(/^\/uploads\/images\/[A-Za-z0-9._-]+$/),
+]);
+
+
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
   search: z.preprocess(
-    (value) =>
-      typeof value === "string" && value.trim() === "" ? undefined : value,
-    z.string().trim().min(1).max(120).optional(),
+    (value) => {
+      if (typeof value !== "string") return value;
+      const sanitized = sanitizePlainText(value);
+      return sanitized === "" ? undefined : sanitized;
+    },
+    z.string().min(1).max(120).optional(),
   ),
 });
 
-const strongPasswordSchema = z
+export const strongPasswordSchema = z
   .string()
   .min(8)
   .max(128)
@@ -21,12 +81,7 @@ const strongPasswordSchema = z
 
 export const registerInputSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(255),
-  name: z
-    .string()
-    .trim()
-    .min(2)
-    .max(80)
-    .regex(/^[\p{L}0-9 .'-]+$/u),
+  name: plainText(2, 80).pipe(z.string().regex(/^[\p{L}0-9 .'-]+$/u)),
   password: strongPasswordSchema,
 });
 
@@ -36,50 +91,69 @@ export const loginInputSchema = z.object({
 });
 
 export const userRoleSchema = z.enum(["admin", "author"]);
-export const postCategorySchema = z
-  .string()
-  .trim()
-  .min(2)
-  .max(40)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+export const postCategorySchema = codeText(2, 40, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 export const createCategoryInputSchema = z.object({
   code: postCategorySchema,
-  name: z.string().trim().min(2).max(80),
-  nativeName: z.string().trim().min(2).max(80),
+  name: plainText(2, 80),
+  nativeName: plainText(2, 80),
 });
+
+export const updateCategoryInputSchema = createCategoryInputSchema.partial();
+
+export const tagCodeSchema = codeText(2, 40, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+
+export const createTagInputSchema = z.object({
+  code: tagCodeSchema,
+  name: plainText(2, 80),
+});
+
+export const updateTagInputSchema = createTagInputSchema.partial();
 export const postStatusSchema = z.enum([
   "draft",
   "pending_review",
   "published",
   "archived",
 ]);
-export const languageCodeSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(2)
-  .max(12)
-  .regex(/^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/);
+export const languageCodeSchema = codeText(2, 12, /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/);
 
 export const languageQuerySchema = z.object({
   language: languageCodeSchema.optional(),
 });
 
+export const legalPageKeySchema = z.enum(["terms", "gdpr", "marketing"]);
+
+export const legalPageParamSchema = z.object({
+  key: legalPageKeySchema,
+});
+
+export const upsertLegalPageInputSchema = z.object({
+  languageCode: languageCodeSchema,
+  title: plainText(3, 160),
+  content: longText(50),
+});
+
+export const newsletterSubscribeInputSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(255),
+  termsAccepted: z.literal(true),
+  marketingAccepted: z.boolean().default(false),
+  languageCode: languageCodeSchema.default("ro"),
+});
+
 const postTranslationInputSchema = z.object({
   languageCode: languageCodeSchema,
-  metaTitle: z.string().trim().max(180).optional(),
-  metaDescription: z.string().trim().max(320).optional(),
-  keywords: z.string().trim().max(500).optional(),
-  title: z.string().min(3).max(180),
+  metaTitle: optionalPlainText(180),
+  metaDescription: optionalPlainText(320),
+  keywords: optionalPlainText(500),
+  title: plainText(3, 180),
   slug: z
     .string()
     .trim()
     .min(3)
     .max(200)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  excerpt: z.string().trim().min(20).max(320).optional(),
-  readTime: z.string().trim().min(3).max(40).optional(),
-  content: z.string().min(10),
+  excerpt: plainText(20, 320).optional(),
+  readTime: plainText(3, 40).optional(),
+  content: longText(10),
 });
 
 export const createUserInputSchema = registerInputSchema.extend({
@@ -87,15 +161,29 @@ export const createUserInputSchema = registerInputSchema.extend({
 });
 
 export const updateUserInputSchema = z.object({
-  name: z.string().trim().min(2).max(120).optional(),
+  name: plainText(2, 120).optional(),
   email: z.string().trim().toLowerCase().email().max(255).optional(),
+  avatarUrl: safeMediaUrlSchema.nullable().optional(),
   role: userRoleSchema.optional(),
 });
 
+export const updateAccountInputSchema = z.object({
+  name: plainText(2, 120).optional(),
+  avatarUrl: safeMediaUrlSchema.nullable().optional(),
+});
+
+export const changePasswordInputSchema = z.object({
+  currentPassword: z.string().min(8).max(128),
+  newPassword: strongPasswordSchema,
+});
+
+const postImageUrlSchema = safeMediaUrlSchema;
+
 export const createPostInputSchema = z
   .object({
-    imageUrl: z.string().url().max(2048).optional(),
-    title: z.string().min(3).max(180).optional(),
+    imageUrl: postImageUrlSchema.optional(),
+    galleryImages: z.array(postImageUrlSchema).max(5).default([]),
+    title: plainText(3, 180).optional(),
     slug: z
       .string()
       .trim()
@@ -103,11 +191,12 @@ export const createPostInputSchema = z
       .max(200)
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
       .optional(),
-    excerpt: z.string().trim().min(20).max(320).optional(),
+    excerpt: plainText(20, 320).optional(),
     category: postCategorySchema.default("publishing"),
+    tagIds: z.array(z.number().int().positive()).default([]),
     status: postStatusSchema.default("draft"),
-    readTime: z.string().trim().min(3).max(40).optional(),
-    content: z.string().min(10).optional(),
+    readTime: plainText(3, 40).optional(),
+    content: longText(10).optional(),
     translations: z.array(postTranslationInputSchema).min(1).optional(),
   })
   .refine(
@@ -120,8 +209,9 @@ export const createPostInputSchema = z
   );
 
 export const updatePostInputSchema = z.object({
-  imageUrl: z.string().url().max(2048).nullable().optional(),
-  title: z.string().min(3).max(180).optional(),
+  imageUrl: postImageUrlSchema.nullable().optional(),
+  galleryImages: z.array(postImageUrlSchema).max(5).optional(),
+  title: plainText(3, 180).optional(),
   slug: z
     .string()
     .trim()
@@ -129,11 +219,12 @@ export const updatePostInputSchema = z.object({
     .max(200)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .optional(),
-  excerpt: z.string().trim().min(20).max(320).optional(),
+  excerpt: plainText(20, 320).optional(),
   category: postCategorySchema.optional(),
+  tagIds: z.array(z.number().int().positive()).optional(),
   status: postStatusSchema.optional(),
-  readTime: z.string().trim().min(3).max(40).optional(),
-  content: z.string().min(10).optional(),
+  readTime: plainText(3, 40).optional(),
+  content: longText(10).optional(),
   translations: z.array(postTranslationInputSchema).min(1).optional(),
 });
 
@@ -147,6 +238,7 @@ export const slugParamSchema = z.object({
 
 export type CreatePostInput = z.infer<typeof createPostInputSchema>;
 export type LanguageCode = z.infer<typeof languageCodeSchema>;
+export type LegalPageKey = z.infer<typeof legalPageKeySchema>;
 export type PostCategory = z.infer<typeof postCategorySchema>;
 export type PostStatus = z.infer<typeof postStatusSchema>;
 export type PostTranslationInput = z.infer<typeof postTranslationInputSchema>;
